@@ -542,7 +542,7 @@ class Application(tk.Frame):
             return {}
 
     def save_data(self):
-        self.save_settings()
+        # self.save_settings()
         if self.save_path.get() is False:
             data = {
                     }
