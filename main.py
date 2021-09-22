@@ -74,7 +74,7 @@ class Application(tk.Frame):
 
         # helpmenu
         self.helpmenu = tk.Menu(self.menubar, tearoff=0)
-        # self.helpmenu.add_command(label="About...", command=lambda: tkinterextension.raise_frame(self.help_frame))
+        self.helpmenu.add_command(label="About", command=lambda: self.open_help_window())
         self.menubar.add_cascade(label="Help", menu=self.helpmenu)
         root.config(menu=self.menubar)
 
@@ -82,19 +82,19 @@ class Application(tk.Frame):
         self.popup = tk.Menu(tearoff=0)
         self.popup.add_separator()
 
-        # help frame
-        self.help_frame = ttk.LabelFrame(text="Help", width=500, height=300)
-        self.help_frame.grid_propagate(False)
-        # self.help_frame.grid(row=0, column=0)
-        self.help_label = ttk.Label(self.help_frame, text="""
-        PicturexViewer version 0.1.0
-        refer to GitHub readme.md for more information
-        """)
-        self.help_label.grid(row=0, column=0)
-        self.close_frame_button = ttk.Button(master=self.help_frame, text="Close")
-        self.close_frame_button.grid(row=1, column=1)
-
-        self.help_frame.lower()
+        # # help frame
+        # self.help_frame = ttk.LabelFrame(text="Help", width=500, height=300)
+        # self.help_frame.grid_propagate(False)
+        # # self.help_frame.grid(row=0, column=0)
+        # self.help_label = ttk.Label(self.help_frame, text="""
+        # PicturexViewer version 0.1.0
+        # refer to GitHub readme.md for more information
+        # """
+        # self.help_label.grid(row=0, column=0)
+        # self.close_frame_button = ttk.Button(master=self.help_frame, text="Close")
+        # self.close_frame_button.grid(row=1, column=1)
+        #
+        # self.help_frame.lower()
 
         # main widgets
         self.image_test = Image.open("Source/Icon/gradient_less_saturated.png")
@@ -141,6 +141,36 @@ class Application(tk.Frame):
     #     # print('zoomed')
     #     return "break"
 
+    def open_settings_(self):
+        settings = tk.Toplevel(root)
+        settings.title("Settings")
+        # settings.geometry(f"{600}x{450}+{int(root.winfo_width()/2)}+{int(root.winfo_height()/2)}")
+        settings.minsize(300, 85)
+        settings.geometry(f"+{int(root.winfo_width()/2)}+{int(root.winfo_height()/2)}")
+
+        show_image_name = ttk.Checkbutton(master=settings, text="Show image label", variable=self.show_label)
+        show_image_name.pack(side="left")
+        save_image_path = ttk.Checkbutton(master=settings, text="Reopen images upon launch", variable=self.save_path)
+        save_image_path.pack(side="left")
+        apply_button = ttk.Button(master=settings, text="Apply", command=lambda: [self.apply_settings(), settings.destroy()])
+        apply_button.pack(side="bottom")
+
+    def open_help_window(self):
+        help_window = tk.Toplevel(root)
+        help_window.minsize(500, 200)
+        help_window.geometry(f"+{int(root.winfo_width()/2)}+{int(root.winfo_height()/2)}")
+        help_window.title("About")
+
+        self.help_label = ttk.Label(master=help_window, text="""
+                PicturexViewer version 0.1.0
+                Refer to GitHub readme.md for more information.
+                """)
+        self.help_label.grid(row=0, column=0)
+        self.close_frame_button = ttk.Button(master=help_window, text="Close", command=help_window.destroy)
+        self.close_frame_button.grid(row=1, column=1)
+
+        # self.help_frame.lower()
+
     def open_slideshow_initiator(self):
         if not self.image_list:  # nothing to slideshow
             return
@@ -170,6 +200,9 @@ class Application(tk.Frame):
         start_button = ttk.Button(master=slideshow_indicator, text="Start",
                                   command=lambda: [slideshow_indicator.destroy(), self.open_fs_slideshow()])
         start_button.pack(side="bottom")
+
+        # todo shift focus to slideshow_indicator upon opening the window
+        # slideshow_indicator.bind('<Enter>', lambda e: [slideshow_indicator.destroy(), self.open_fs_slideshow()])
 
     def open_fs_slideshow(self, image_count=3):
         fs_slideshow = tk.Toplevel(root)
@@ -496,20 +529,6 @@ class Application(tk.Frame):
                 (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image3, anchor='center')
 
-    def open_settings_(self):
-        settings = tk.Toplevel(root)
-        settings.title("Settings")
-        # settings.geometry(f"{600}x{450}+{int(root.winfo_width()/2)}+{int(root.winfo_height()/2)}")
-        settings.minsize(300, 85)
-        settings.geometry(f"+{int(root.winfo_width()/2)}+{int(root.winfo_height()/2)}")
-
-        show_image_name = ttk.Checkbutton(master=settings, text="Show image label", variable=self.show_label)
-        show_image_name.pack(side="left")
-        save_image_path = ttk.Checkbutton(master=settings, text="Reopen images upon launch", variable=self.save_path)
-        save_image_path.pack(side="left")
-        apply_button = ttk.Button(master=settings, text="Apply", command=lambda: [self.apply_settings(), settings.destroy()])
-        apply_button.pack(side="bottom")
-
     def load_settings(self):
         if os.path.exists('Source/settings.txt'):
             try:
@@ -564,7 +583,7 @@ w, h = 1450, 950
 # print(root.winfo_screenwidth())
 root.geometry(f"{w}x{h}+{int(sw/2 - w/2)}+{int(sh/2 - h/2)}")
 root.minsize(400, 200)
-root.title("PictureXViewer v0.1.5a")
+root.title("PictureXViewer v0.1.6a")
 root.iconphoto(False, tk.PhotoImage(file='Source/Icon/gradient_less_saturated.png'))
 root.tk.call('source', 'Source/Style/azure.tcl')
 root.tk.call("set_theme", "dark")
