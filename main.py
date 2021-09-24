@@ -179,6 +179,7 @@ class Application(tk.Frame):
         slideshow_indicator.minsize(400, 90)
         slideshow_indicator.geometry(f"+{int(root.winfo_width()/2)}+{int(root.winfo_height()/2)}")
         slideshow_indicator.title("Start Slideshow")
+        slideshow_indicator.focus_set()
 
         self.timer_label = ttk.Label(master=slideshow_indicator, text="Timer (s):")
         self.timer_label.pack(side="left")
@@ -201,8 +202,8 @@ class Application(tk.Frame):
                                   command=lambda: [slideshow_indicator.destroy(), self.open_fs_slideshow()])
         start_button.pack(side="bottom")
 
-        # todo shift focus to slideshow_indicator upon opening the window
-        # slideshow_indicator.bind('<Enter>', lambda e: [slideshow_indicator.destroy(), self.open_fs_slideshow()])
+        slideshow_indicator.bind('<Return>', lambda e: [slideshow_indicator.destroy(), self.open_fs_slideshow()])
+        slideshow_indicator.bind('<Escape>', lambda e: slideshow_indicator.destroy())
 
     def open_fs_slideshow(self, image_count=3):
         fs_slideshow = tk.Toplevel(root)
@@ -584,7 +585,8 @@ w, h = 1450, 950
 root.geometry(f"{w}x{h}+{int(sw/2 - w/2)}+{int(sh/2 - h/2)}")
 root.minsize(400, 200)
 root.title("PictureXViewer v0.1.6a")
-root.iconphoto(False, tk.PhotoImage(file='Source/Icon/gradient_less_saturated.png'))
+# root.iconphoto(False, tk.PhotoImage(file='Source/Icon/gradient_less_saturated.png'))
+root.iconbitmap('Source/Icon/picturexviewer.ico')
 root.tk.call('source', 'Source/Style/azure.tcl')
 root.tk.call("set_theme", "dark")
 app = Application(master=root)
