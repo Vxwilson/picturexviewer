@@ -33,9 +33,13 @@ class Application(tk.Frame):
         self.save_path.set(True if not self.settings_data else self.settings_data["save_path"])
         # /settings
 
-        self.filenames = None if (not self.settings_data or not self.data or (self.settings_data and self.save_path is False)) else self.data["filenames"]
+        self.filenames = None if (
+                    not self.settings_data or not self.data or (self.settings_data and self.save_path is False)) else \
+        self.data["filenames"]
         self.image_list = []
-        self.current_index = 0 if (not self.settings_data or not self.data or (self.settings_data and self.save_path is False)) else self.data["current_index"]
+        self.current_index = 0 if (
+                    not self.settings_data or not self.data or (self.settings_data and self.save_path is False)) else \
+        self.data["current_index"]
         print(self.current_index)
         self.images_len = 0
         self.index_label_text = tk.StringVar()
@@ -44,11 +48,14 @@ class Application(tk.Frame):
         self.image_name.set('')
 
         self.slide_show_time = tk.IntVar()
-        self.slide_show_time.set(3)
+        self.slide_show_time.set(3 if (not self.settings_data or "slide_show_time" not in self.settings_data)
+                                 else self.settings_data["slide_show_time"])
         self.side_count = tk.IntVar()
-        self.side_count.set(1)
+        self.side_count.set(1 if (not self.settings_data or "side_count" not in self.settings_data)
+                            else self.settings_data["side_count"])
         self.screen_dis = tk.IntVar()
-        self.screen_dis.set(1)
+        self.screen_dis.set(1 if (not self.settings_data or "screen_dis" not in self.settings_data)
+                            else self.settings_data["screen_dis"])
         self.current_image = None
         self.current_image2 = None
         self.current_image3 = None
@@ -63,13 +70,13 @@ class Application(tk.Frame):
         self.filemenu.add_separator()
         self.filemenu.add_command(label="Preferences", command=self.open_settings_, accelerator="Alt+P")
         self.filemenu.add_separator()
-        self.filemenu.add_command(label="Exit", command=root.quit)
+        self.filemenu.add_command(label="Exit", command=root.quit, accelerator="Alt+X")
         self.menubar.add_cascade(label="File", menu=self.filemenu)
 
         self.actionmenu = tk.Menu(self.menubar, tearoff=0)
-        self.actionmenu.add_command(label="Next", command=self.next_image, accelerator="Ctrl+L")
-        self.actionmenu.add_command(label="Previous", command=self.prev_image, accelerator="Ctrl+J")
-        self.actionmenu.add_command(label="Start Slideshow", command=self.start_slideshow, accelerator="Alt+S")
+        self.actionmenu.add_command(label="Next", command=self.next_image, accelerator="<")
+        self.actionmenu.add_command(label="Previous", command=self.prev_image, accelerator=">")
+        self.actionmenu.add_command(label="Start Slideshow", command=self.open_slideshow_initiator, accelerator="S")
         self.menubar.add_cascade(label="Actions", menu=self.actionmenu)
 
         # helpmenu
@@ -103,24 +110,26 @@ class Application(tk.Frame):
         self.image_canvas.pack(anchor='center', expand='yes')
         # self.image_canvas.place(anchor='n', relx=0.5, rely=0)
         root.update()
-        self.canvas_im = self.image_canvas.create_image((self.image_canvas.winfo_width()/2, self.image_canvas.winfo_height()/2),
-                                                        image=self.current_image, anchor='center')
+        self.canvas_im = self.image_canvas.create_image(
+            (self.image_canvas.winfo_width() / 2, self.image_canvas.winfo_height() / 2),
+            image=self.current_image, anchor='center')
         self.update_image()
         self.resizing()
-        self.name_label = ttk.Label(textvariable=self.image_name)\
+        self.name_label = ttk.Label(textvariable=self.image_name) \
             .place(in_=self.image_canvas, bordermode='outside', anchor='nw', relx=0, rely=1.0, y=2, relwidth=1.0)
 
         self.fram = ttk.Frame()
-        self.open_button = ttk.Button(self.fram, text="Open File", command=self.select_images, width=8).pack(side='left')
-        self.prev_button = ttk.Button(self.fram, text="Prev", command=self.prev_image, width=5)\
+        self.open_button = ttk.Button(self.fram, text="Open File", command=self.select_images, width=8).pack(
+            side='left')
+        self.prev_button = ttk.Button(self.fram, text="Prev", command=self.prev_image, width=5) \
             .place(anchor='center', relx=0.45, rely=0.5)
-        self.index_label = ttk.Label(self.fram, textvariable=self.index_label_text)\
+        self.index_label = ttk.Label(self.fram, textvariable=self.index_label_text) \
             .place(anchor='center', relx=0.5, rely=0.5)
-        self.next_button = ttk.Button(self.fram, text="Next", command=self.next_image, width=5)\
+        self.next_button = ttk.Button(self.fram, text="Next", command=self.next_image, width=5) \
             .place(anchor='center', relx=0.55, rely=0.5)
-        self.slideshow_button = ttk.Button(self.fram, text="Slideshow", command=self.open_slideshow_initiator).pack(side='right')
+        self.slideshow_button = ttk.Button(self.fram, text="Slideshow", command=self.open_slideshow_initiator).pack(
+            side='right')
         self.fram.pack(side='bottom', fill='both')
-
 
         # load data
         if self.filenames is not None:
@@ -128,10 +137,10 @@ class Application(tk.Frame):
 
         self.bind_keys()
 
-
     last_view_time = 0
     paused = False
     timer_id = None
+
     # image = None
 
     # def toggle_fullscreen(self, event=None):
@@ -146,19 +155,20 @@ class Application(tk.Frame):
         settings.title("Settings")
         # settings.geometry(f"{600}x{450}+{int(root.winfo_width()/2)}+{int(root.winfo_height()/2)}")
         settings.minsize(300, 85)
-        settings.geometry(f"+{int(root.winfo_width()/2)}+{int(root.winfo_height()/2)}")
+        settings.geometry(f"+{int(root.winfo_width() / 2)}+{int(root.winfo_height() / 2)}")
 
         show_image_name = ttk.Checkbutton(master=settings, text="Show image label", variable=self.show_label)
         show_image_name.pack(side="left")
         save_image_path = ttk.Checkbutton(master=settings, text="Reopen images upon launch", variable=self.save_path)
         save_image_path.pack(side="left")
-        apply_button = ttk.Button(master=settings, text="Apply", command=lambda: [self.apply_settings(), settings.destroy()])
+        apply_button = ttk.Button(master=settings, text="Apply",
+                                  command=lambda: [self.apply_settings(), settings.destroy()])
         apply_button.pack(side="bottom")
 
     def open_help_window(self):
         help_window = tk.Toplevel(root)
         help_window.minsize(500, 200)
-        help_window.geometry(f"+{int(root.winfo_width()/2)}+{int(root.winfo_height()/2)}")
+        help_window.geometry(f"+{int(root.winfo_width() / 2)}+{int(root.winfo_height() / 2)}")
         help_window.title("About")
 
         self.help_label = ttk.Label(master=help_window, text="""
@@ -177,7 +187,7 @@ class Application(tk.Frame):
 
         slideshow_indicator = tk.Toplevel(root)
         slideshow_indicator.minsize(400, 90)
-        slideshow_indicator.geometry(f"+{int(root.winfo_width()/2)}+{int(root.winfo_height()/2)}")
+        slideshow_indicator.geometry(f"+{int(root.winfo_width() / 2)}+{int(root.winfo_height() / 2)}")
         slideshow_indicator.title("Start Slideshow")
         slideshow_indicator.focus_set()
 
@@ -189,20 +199,21 @@ class Application(tk.Frame):
         self.side_count_label = ttk.Label(master=slideshow_indicator, text="Side by side:")
         self.side_count_label.pack(side="left")
         self.side_count_box = ttk.Spinbox(master=slideshow_indicator, width=6, from_=1, to=3, wrap=True,
-                                     textvariable=self.side_count)
+                                          textvariable=self.side_count)
         self.side_count_box.pack(side="left")
 
         if self.screen_count > 1:
             self.side_count_label = ttk.Label(master=slideshow_indicator, text="Display Monitor:")
             self.side_count_label.pack(side="left")
-            self.side_count_box = ttk.Spinbox(master=slideshow_indicator, width=6, from_=1, to=self.screen_count, wrap=True,
+            self.side_count_box = ttk.Spinbox(master=slideshow_indicator, width=6, from_=1, to=self.screen_count,
+                                              wrap=True,
                                               textvariable=self.screen_dis)
             self.side_count_box.pack(side="left")
         start_button = ttk.Button(master=slideshow_indicator, text="Start",
-                                  command=lambda: [slideshow_indicator.destroy(), self.open_fs_slideshow()])
+                                  command=lambda: [slideshow_indicator.destroy(), self.open_fs_slideshow(), self.save_settings()])
         start_button.pack(side="bottom")
 
-        slideshow_indicator.bind('<Return>', lambda e: [slideshow_indicator.destroy(), self.open_fs_slideshow()])
+        slideshow_indicator.bind('<Return>', lambda e: [slideshow_indicator.destroy(), self.open_fs_slideshow(), self.save_settings()])
         slideshow_indicator.bind('<Escape>', lambda e: slideshow_indicator.destroy())
 
     def open_fs_slideshow(self, image_count=3):
@@ -223,36 +234,91 @@ class Application(tk.Frame):
         root.update()
 
         self.image_canvas_ss = tk.Canvas(fs_slideshow, width=fs_slideshow.winfo_width(),
-                                 height=fs_slideshow.winfo_height(), background='#3B3D3F')
+                                         height=fs_slideshow.winfo_height(), background='#3B3D3F')
         self.image_canvas_ss.pack(anchor='center', expand='yes')
         root.update()
 
+        if self.image_canvas_ss is not None:
+            self.image_canvas_ss.delete('all')
+
         if self.side_count.get() == 1:
-            canvas_im = self.image_canvas_ss.create_image(
+            self.image_test = self.image_list[self.current_index]
+            self.current_image = self.resizing(self.side_count.get())
+            self.canvas_im = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 2, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image, anchor='center')
 
         elif self.side_count.get() == 2:
-            canvas_im = self.image_canvas_ss.create_image(
+            self.image_test = self.image_list[self.current_index]
+            self.current_image = self.resizing(self.side_count.get())
+            self.canvas_im = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 4, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image, anchor='center')
 
-            canvas_im2 = self.image_canvas_ss.create_image(
+            if self.current_index + 1 >= self.images_len:
+                self.current_index = 0
+            else:
+                self.current_index += 1
+            self.image_test = self.image_list[self.current_index]
+            self.current_image2 = self.resizing(self.side_count.get())
+            self.canvas_im2 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 4 * 3, self.image_canvas_ss.winfo_height() / 2),
-                image=self.current_image, anchor='center')
+                image=self.current_image2, anchor='center')
 
         elif self.side_count.get() == 3:
-            canvas_im = self.image_canvas_ss.create_image(
+            self.image_test = self.image_list[self.current_index]
+            self.current_image = self.resizing(self.side_count.get())
+            self.canvas_im = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 6, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image, anchor='center')
 
-            canvas_im2 = self.image_canvas_ss.create_image(
+            if self.current_index + 1 >= self.images_len:
+                self.current_index = 0
+            else:
+                self.current_index += 1
+            self.image_test = self.image_list[self.current_index]
+            self.current_image2 = self.resizing(self.side_count.get())
+            self.canvas_im2 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 2, self.image_canvas_ss.winfo_height() / 2),
-                image=self.current_image, anchor='center')
-            canvas_im3 = self.image_canvas_ss.create_image(
-                (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
-                image=self.current_image, anchor='center')
+                image=self.current_image2, anchor='center')
 
+            if self.current_index + 1 >= self.images_len:
+                self.current_index = 0
+            else:
+                self.current_index += 1
+            self.image_test = self.image_list[self.current_index]
+            self.current_image3 = self.resizing(self.side_count.get())
+            self.canvas_im3 = self.image_canvas_ss.create_image(
+                (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
+                image=self.current_image3, anchor='center')
+
+        # if self.side_count.get() == 1:
+        #     canvas_im = self.image_canvas_ss.create_image(
+        #         (self.image_canvas_ss.winfo_width() / 2, self.image_canvas_ss.winfo_height() / 2),
+        #         image=self.current_image, anchor='center')
+        #
+        # elif self.side_count.get() == 2:
+        #     canvas_im = self.image_canvas_ss.create_image(
+        #         (self.image_canvas_ss.winfo_width() / 4, self.image_canvas_ss.winfo_height() / 2),
+        #         image=self.current_image, anchor='center')
+        #
+        #     canvas_im2 = self.image_canvas_ss.create_image(
+        #         (self.image_canvas_ss.winfo_width() / 4 * 3, self.image_canvas_ss.winfo_height() / 2),
+        #         image=self.current_image2, anchor='center')
+        #
+        # elif self.side_count.get() == 3:
+        #     canvas_im = self.image_canvas_ss.create_image(
+        #         (self.image_canvas_ss.winfo_width() / 6, self.image_canvas_ss.winfo_height() / 2),
+        #         image=self.current_image, anchor='center')
+        #
+        #     canvas_im2 = self.image_canvas_ss.create_image(
+        #         (self.image_canvas_ss.winfo_width() / 2, self.image_canvas_ss.winfo_height() / 2),
+        #         image=self.current_image2, anchor='center')
+        #     canvas_im3 = self.image_canvas_ss.create_image(
+        #         (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
+        #         image=self.current_image3, anchor='center')
+
+        self.last_view_time = time.time()
         self.set_timer()
 
     def bind_keys(self):
@@ -263,13 +329,14 @@ class Application(tk.Frame):
         root.bind('<Control-s>', lambda e: self.save_data())
 
         root.bind('<Alt-p>', lambda e: self.open_settings_())
+        root.bind('<Alt-x>', lambda e: root.quit())
 
         root.bind('<Left>', lambda e: self.prev_image())
         root.bind('<Right>', lambda e: self.next_image())
 
         # root.bind('<s>', lambda e: self.start_slideshow())
         # root.bind('<Alt-s>', lambda e: self.open_fs_slideshow())
-        root.bind('<Alt-s>', lambda e: self.open_slideshow_initiator())
+        root.bind('<s>', lambda e: self.open_slideshow_initiator())
         # auto resize image
         root.bind('<Configure>', lambda e: self.resizing())
 
@@ -280,7 +347,7 @@ class Application(tk.Frame):
             self.popup.grab_release()
 
     def resizing(self, mode=0, event=None):
-        self.image_canvas.configure(width=root.winfo_height()*0.9*9/16, height=root.winfo_height()*0.9)
+        self.image_canvas.configure(width=root.winfo_height() * 0.9 * 9 / 16, height=root.winfo_height() * 0.9)
         if self.image_test:
             iw, ih = self.image_test.width, self.image_test.height
             # mw, mh = self.master.winfo_width(), self.master.winfo_height()
@@ -314,10 +381,10 @@ class Application(tk.Frame):
 
     # select multiple files
     def select_images(self):
-        self.filenames = tdialog.askopenfilenames(parent=root, filetypes=(("image files", "*.jpg *.png *.jpeg"), ('All files', '*.*')),
-                                        title='Select a directory')
+        self.filenames = tdialog.askopenfilenames(parent=root, filetypes=(
+        ("image files", "*.jpg *.png *.jpeg"), ('All files', '*.*')),
+                                                  title='Select a directory')
         self.read_im(self.filenames)
-
 
     # def read_images(self, path):
     #     self.image_list = [Image.open(item) for i in [glob.glob(path+'/*.%s' % ext)
@@ -325,7 +392,7 @@ class Application(tk.Frame):
     #     self.max_index = len(self.image_list)
 
     def update_label(self):
-        self.index_label_text.set(f"{self.current_index+1}/{self.images_len}")
+        self.index_label_text.set(f"{self.current_index + 1}/{self.images_len}")
         if self.show_label.get():
             self.image_name.set(f"{self.image_test.filename.split('/')[-1]}")
         else:
@@ -361,7 +428,6 @@ class Application(tk.Frame):
         self.paused = not self.paused
         if self.paused is False:
             self.set_timer()
-
 
     def update_image(self):
         self.image_canvas.delete('all')
@@ -461,6 +527,8 @@ class Application(tk.Frame):
                 (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image3, anchor='center')
 
+        print(self.current_index)
+
     def prev_image_slideshow(self):
         self.last_view_time = time.time()
 
@@ -468,7 +536,7 @@ class Application(tk.Frame):
             self.image_canvas_ss.delete('all')
 
         if self.side_count.get() == 1:
-            if self.current_index - 1 <= 0:
+            if self.current_index == 0:
                 self.current_index = self.images_len - 1
             else:
                 self.current_index -= 1
@@ -479,8 +547,8 @@ class Application(tk.Frame):
                 image=self.current_image, anchor='center')
 
         elif self.side_count.get() == 2:
-            if self.current_index - 3 <= 0:
-                self.current_index = self.images_len - 3
+            if self.current_index == 2:
+                self.current_index = self.images_len - 1
             else:
                 self.current_index -= 3
             self.image_test = self.image_list[self.current_index]
@@ -500,8 +568,8 @@ class Application(tk.Frame):
                 image=self.current_image2, anchor='center')
 
         elif self.side_count.get() == 3:
-            if self.current_index - 5 <= 0:
-                self.current_index = self.images_len - 5
+            if self.current_index < 5:
+                self.current_index = (self.images_len - 1) + self.current_index - 4
             else:
                 self.current_index -= 5
             self.image_test = self.image_list[self.current_index]
@@ -529,6 +597,8 @@ class Application(tk.Frame):
             self.canvas_im3 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image3, anchor='center')
+        print(self.current_index)
+
 
     def load_settings(self):
         if os.path.exists('Source/settings.txt'):
@@ -547,7 +617,10 @@ class Application(tk.Frame):
     def save_settings(self):
         self.save_data()
         data = {'show_label': self.show_label.get(),
-                'save_path': self.save_path.get()}
+                'save_path': self.save_path.get(),
+                'slide_show_time': self.slide_show_time.get(),
+                'side_count': self.side_count.get(),
+                'screen_dis': self.screen_dis.get()}
         with open('Source/settings.txt', 'wb') as file:
             pickle.dump(data, file)
 
@@ -565,13 +638,14 @@ class Application(tk.Frame):
         # self.save_settings()
         if self.save_path.get() is False:
             data = {
-                    }
+            }
         else:
             data = {'filenames': self.filenames,
                     'current_index': self.current_index
                     }
         with open('Source/save.txt', 'wb') as file:
             pickle.dump(data, file)
+
 
 root = tk.Tk()
 # ttk.Style().configure("TButton", padding=6, relief="flat", foreground="#E8E8E8", background="#292929")
@@ -582,7 +656,7 @@ user32 = ctypes.windll.user32
 sw, sh = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 w, h = 1450, 950
 # print(root.winfo_screenwidth())
-root.geometry(f"{w}x{h}+{int(sw/2 - w/2)}+{int(sh/2 - h/2)}")
+root.geometry(f"{w}x{h}+{int(sw / 2 - w / 2)}+{int(sh / 2 - h / 2)}")
 root.minsize(400, 200)
 root.title("PictureXViewer v0.1.6a")
 # root.iconphoto(False, tk.PhotoImage(file='Source/Icon/gradient_less_saturated.png'))
@@ -591,4 +665,3 @@ root.tk.call('source', 'Source/Style/azure.tcl')
 root.tk.call("set_theme", "dark")
 app = Application(master=root)
 app.mainloop()
-
