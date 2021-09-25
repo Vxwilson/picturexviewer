@@ -7,7 +7,7 @@ import tkinter.font
 import pickle
 import glob
 import time
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ExifTags
 
 
 class Application(tk.Frame):
@@ -32,7 +32,7 @@ class Application(tk.Frame):
         self.save_path = tk.BooleanVar()
         self.save_path.set(True if not self.settings_data else self.settings_data["save_path"])
         # /settings
-
+        self.exif = None
         self.filenames = None if (
                     not self.settings_data or not self.data or (self.settings_data and self.save_path is False)) else \
         self.data["filenames"]
@@ -74,8 +74,8 @@ class Application(tk.Frame):
         self.menubar.add_cascade(label="File", menu=self.filemenu)
 
         self.actionmenu = tk.Menu(self.menubar, tearoff=0)
-        self.actionmenu.add_command(label="Next", command=self.next_image, accelerator="<")
-        self.actionmenu.add_command(label="Previous", command=self.prev_image, accelerator=">")
+        self.actionmenu.add_command(label="Next", command=self.next_image, accelerator=">")
+        self.actionmenu.add_command(label="Previous", command=self.prev_image, accelerator="<")
         self.actionmenu.add_command(label="Start Slideshow", command=self.open_slideshow_initiator, accelerator="S")
         self.menubar.add_cascade(label="Actions", menu=self.actionmenu)
 
@@ -87,21 +87,8 @@ class Application(tk.Frame):
 
         # menu popup
         self.popup = tk.Menu(tearoff=0)
+        self.popup.add_command(label="Show Exif", command=self.show_exif, accelerator="Ctrl+E")
         self.popup.add_separator()
-
-        # # help frame
-        # self.help_frame = ttk.LabelFrame(text="Help", width=500, height=300)
-        # self.help_frame.grid_propagate(False)
-        # # self.help_frame.grid(row=0, column=0)
-        # self.help_label = ttk.Label(self.help_frame, text="""
-        # PicturexViewer version 0.1.0
-        # refer to GitHub readme.md for more information
-        # """
-        # self.help_label.grid(row=0, column=0)
-        # self.close_frame_button = ttk.Button(master=self.help_frame, text="Close")
-        # self.close_frame_button.grid(row=1, column=1)
-        #
-        # self.help_frame.lower()
 
         # main widgets
         self.image_test = Image.open("Source/Icon/gradient_less_saturated.png")
@@ -156,6 +143,7 @@ class Application(tk.Frame):
         # settings.geometry(f"{600}x{450}+{int(root.winfo_width()/2)}+{int(root.winfo_height()/2)}")
         settings.minsize(300, 85)
         settings.geometry(f"+{int(root.winfo_width() / 2)}+{int(root.winfo_height() / 2)}")
+        settings.focus_set()
 
         show_image_name = ttk.Checkbutton(master=settings, text="Show image label", variable=self.show_label)
         show_image_name.pack(side="left")
@@ -164,6 +152,8 @@ class Application(tk.Frame):
         apply_button = ttk.Button(master=settings, text="Apply",
                                   command=lambda: [self.apply_settings(), settings.destroy()])
         apply_button.pack(side="bottom")
+
+        settings.bind('<Escape>', lambda e: settings.destroy())
 
     def open_help_window(self):
         help_window = tk.Toplevel(root)
@@ -321,12 +311,73 @@ class Application(tk.Frame):
         self.last_view_time = time.time()
         self.set_timer()
 
+    def show_exif(self):
+        exif_window = tk.Toplevel(root)
+        exif_window.title("EXIF")
+        exif_window.minsize(250, 50)
+        exif_window.geometry(f"+{int(root.winfo_width() / 2)}+{int(root.winfo_height() / 2)}")
+        exif_window.focus_set()
+        exif_window.resizable(False, False)
+        # exif_window.overrideredirect(True)
+
+        exif_frame = ttk.LabelFrame(exif_window, text="")
+        exif_frame.pack()
+        dimension_label = ttk.Label(master=exif_frame, text="Dimensions:")
+        dimension_text = ttk.Label(exif_frame, text="-")
+        model_label = ttk.Label(master=exif_frame, text="Model:")
+        model_text = ttk.Label(exif_frame, text="-")
+        date_label = ttk.Label(master=exif_frame, text="Date taken:")
+        date_text = ttk.Label(exif_frame, text="-")
+        focal_length_label = ttk.Label(master=exif_frame, text="Focal length(mm):")
+        focal_length_text = ttk.Label(exif_frame, text="-")
+        misc_label = ttk.Label(master=exif_frame, text="Misc:")
+        misc_text = ttk.Label(exif_frame, text="-")
+        if self.exif and self.exif[self.current_index]:
+            if 256 in self.exif[self.current_index]:
+                dimension_text['text'] = f"{self.exif[self.current_index][256]}x{self.exif[self.current_index][257]}"
+            else:
+                dimension_text['text'] = f"{self.image_list[self.current_index].size[0]}x" \
+                                         f"{self.image_list[self.current_index].size[1]}"
+            if 272 in self.exif[self.current_index]:
+                model_text['text'] = f"{self.exif[self.current_index][272]}"
+            if 306 in self.exif[self.current_index]:
+                date_text['text'] = f"{self.exif[self.current_index][306]}"
+            elif 36867 in self.exif[self.current_index]:
+                date_text['text'] = f"{self.exif[self.current_index][36867]}"
+            if 37386 in self.exif[self.current_index]:
+                focal_length_text['text'] = f"{self.exif[self.current_index][37386]}"
+            if 39321 in self.exif[self.current_index]:
+                misc_text['text'] = f"{self.exif[self.current_index][39321]}"
+
+
+        dimension_label.grid(row=0, column=0, sticky="w", ipadx=15, padx=5, pady=5)
+        dimension_text.grid(row=0, column=1, sticky="w", ipadx=15, padx=5, pady=5)
+        model_label.grid(row=1, column=0, sticky="w", ipadx=15, padx=5, pady=5)
+        model_text.grid(row=1, column=1, sticky="w", ipadx=15, padx=5, pady=5)
+        date_label.grid(row=2, column=0, sticky="w", ipadx=15, padx=5, pady=5)
+        date_text.grid(row=2, column=1, sticky="w", ipadx=15, padx=5, pady=5)
+        focal_length_label.grid(row=3, column=0, sticky="w", ipadx=15, padx=5, pady=5)
+        focal_length_text.grid(row=3, column=1, sticky="w", ipadx=15, padx=5, pady=5)
+        misc_label.grid(row=4, column=0, sticky="w", ipadx=15, padx=5, pady=5)
+        misc_text.grid(row=4, column=1, sticky="w", ipadx=15, padx=5, pady=5)
+
+
+        exif_frame.grid_rowconfigure([0, 1, 2, 3], weight=1)
+        exif_frame.grid_columnconfigure([0, 1], weight=1)
+
+        exif_window.bind('<Escape>', lambda e: exif_window.destroy())
+
     def bind_keys(self):
         # shortcuts
         # root.bind("<t>", self.toggle_fullscreen)
+        root.bind("<Button-3>", self.menu_popup)
+
 
         root.bind('<Control-o>', lambda e: self.select_images())
         root.bind('<Control-s>', lambda e: self.save_data())
+
+        #popup menu
+        root.bind('<Control-e>', lambda e: self.show_exif())
 
         root.bind('<Alt-p>', lambda e: self.open_settings_())
         root.bind('<Alt-x>', lambda e: root.quit())
@@ -384,7 +435,8 @@ class Application(tk.Frame):
         self.filenames = tdialog.askopenfilenames(parent=root, filetypes=(
         ("image files", "*.jpg *.png *.jpeg"), ('All files', '*.*')),
                                                   title='Select a directory')
-        self.read_im(self.filenames)
+        if self.filenames:
+            self.read_im(self.filenames)
 
     # def read_images(self, path):
     #     self.image_list = [Image.open(item) for i in [glob.glob(path+'/*.%s' % ext)
@@ -401,6 +453,17 @@ class Application(tk.Frame):
     def read_im(self, images, index=0):
         self.image_list = [Image.open(item) for item in images]
         self.images_len = len(self.image_list)
+        try:
+            # tags
+            # 256: width; 257: height; 271: brand; 272: model; 274: orientation; 37386: focal length; 306: date
+            self.exif = [image._getexif() for image in self.image_list]
+
+            for e in self.exif:
+                    print(e)
+        except AttributeError:
+            print("no exif detected")
+
+        self.save_settings()
         self.update_label()
         self.open_image_at(index)
 
