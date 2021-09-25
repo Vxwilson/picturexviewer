@@ -8,5 +8,5 @@ Select image files by pressing the hotkey ``` <Ctrl+O> ```. To start a slideshow
 None.
 
 # Upcoming features
--zoom option
--video/.gif player
+* zooming options
+* video/.gif player
