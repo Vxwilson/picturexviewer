@@ -40,7 +40,7 @@ class Application(tk.Frame):
         self.current_index = 0 if (
                     not self.settings_data or not self.data or (self.settings_data and self.save_path is False)) else \
         self.data["current_index"]
-        print(self.current_index)
+        # print(self.current_index)
         self.images_len = 0
         self.index_label_text = tk.StringVar()
         self.index_label_text.set("0/0")
@@ -120,8 +120,10 @@ class Application(tk.Frame):
 
         # load data
         if self.filenames is not None:
-            self.read_im(self.filenames, self.current_index)
-
+            try:
+                self.read_im(self.filenames, self.current_index)
+            except Exception as e:
+                print(e)
         self.bind_keys()
 
     last_view_time = 0
@@ -206,7 +208,7 @@ class Application(tk.Frame):
         slideshow_indicator.bind('<Return>', lambda e: [slideshow_indicator.destroy(), self.open_fs_slideshow(), self.save_settings()])
         slideshow_indicator.bind('<Escape>', lambda e: slideshow_indicator.destroy())
 
-    def open_fs_slideshow(self, image_count=3):
+    def open_fs_slideshow(self):
         fs_slideshow = tk.Toplevel(root)
         if self.screen_dis.get() == 1:
             fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+0+0")
@@ -239,6 +241,10 @@ class Application(tk.Frame):
                 image=self.current_image, anchor='center')
 
         elif self.side_count.get() == 2:
+            self.image_canvas_ss.create_line(self.image_canvas_ss.winfo_width() / 2, 0,
+                                             self.image_canvas_ss.winfo_width() / 2, self.image_canvas_ss.winfo_height(),
+                                             fill='#3F4344', width=3, dash=(4, 2))
+
             self.image_test = self.image_list[self.current_index]
             self.current_image = self.resizing(self.side_count.get())
             self.canvas_im = self.image_canvas_ss.create_image(
@@ -256,6 +262,14 @@ class Application(tk.Frame):
                 image=self.current_image2, anchor='center')
 
         elif self.side_count.get() == 3:
+            self.image_canvas_ss.create_line(self.image_canvas_ss.winfo_width() / 3, 0,
+                                             self.image_canvas_ss.winfo_width() / 3,
+                                             self.image_canvas_ss.winfo_height(),
+                                             fill='#3F4344', width=3, dash=(4, 2))
+            self.image_canvas_ss.create_line(self.image_canvas_ss.winfo_width() / 3 * 2, 0,
+                                             self.image_canvas_ss.winfo_width() / 3 * 2,
+                                             self.image_canvas_ss.winfo_height(),
+                                             fill='#3F4344', width=3, dash=(4, 2))
             self.image_test = self.image_list[self.current_index]
             self.current_image = self.resizing(self.side_count.get())
             self.canvas_im = self.image_canvas_ss.create_image(
@@ -281,33 +295,6 @@ class Application(tk.Frame):
             self.canvas_im3 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image3, anchor='center')
-
-        # if self.side_count.get() == 1:
-        #     canvas_im = self.image_canvas_ss.create_image(
-        #         (self.image_canvas_ss.winfo_width() / 2, self.image_canvas_ss.winfo_height() / 2),
-        #         image=self.current_image, anchor='center')
-        #
-        # elif self.side_count.get() == 2:
-        #     canvas_im = self.image_canvas_ss.create_image(
-        #         (self.image_canvas_ss.winfo_width() / 4, self.image_canvas_ss.winfo_height() / 2),
-        #         image=self.current_image, anchor='center')
-        #
-        #     canvas_im2 = self.image_canvas_ss.create_image(
-        #         (self.image_canvas_ss.winfo_width() / 4 * 3, self.image_canvas_ss.winfo_height() / 2),
-        #         image=self.current_image2, anchor='center')
-        #
-        # elif self.side_count.get() == 3:
-        #     canvas_im = self.image_canvas_ss.create_image(
-        #         (self.image_canvas_ss.winfo_width() / 6, self.image_canvas_ss.winfo_height() / 2),
-        #         image=self.current_image, anchor='center')
-        #
-        #     canvas_im2 = self.image_canvas_ss.create_image(
-        #         (self.image_canvas_ss.winfo_width() / 2, self.image_canvas_ss.winfo_height() / 2),
-        #         image=self.current_image2, anchor='center')
-        #     canvas_im3 = self.image_canvas_ss.create_image(
-        #         (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
-        #         image=self.current_image3, anchor='center')
-
         self.last_view_time = time.time()
         self.set_timer()
 
@@ -408,7 +395,7 @@ class Application(tk.Frame):
             elif mode == 1:
                 mw, mh = self.image_canvas_ss.winfo_width(), self.image_canvas_ss.winfo_height() * 0.99
             elif mode == 2:
-                mw, mh = self.image_canvas_ss.winfo_width(), self.image_canvas_ss.winfo_height() * 0.97
+                mw, mh = self.image_canvas_ss.winfo_width(), self.image_canvas_ss.winfo_height() * 0.98
                 mw /= 2
             elif mode == 3:
                 mw, mh = self.image_canvas_ss.winfo_width(), self.image_canvas_ss.winfo_height() * 0.85
@@ -464,6 +451,7 @@ class Application(tk.Frame):
         except AttributeError:
             print("no exif detected")
 
+        self.current_index = 0
         self.save_settings()
         self.update_label()
         self.open_image_at(index)
@@ -522,8 +510,8 @@ class Application(tk.Frame):
     def next_image_slideshow(self):
         self.last_view_time = time.time()
 
-        if self.image_canvas_ss is not None:
-            self.image_canvas_ss.delete('all')
+        # if self.image_canvas_ss is not None:
+        #     # self.image_canvas_ss.delete('all')
 
         if self.side_count.get() == 1:
 
@@ -596,8 +584,8 @@ class Application(tk.Frame):
     def prev_image_slideshow(self):
         self.last_view_time = time.time()
 
-        if self.image_canvas_ss is not None:
-            self.image_canvas_ss.delete('all')
+        # if self.image_canvas_ss is not None:
+        #     self.image_canvas_ss.delete('all')
 
         if self.side_count.get() == 1:
             if self.current_index == 0:
