@@ -424,6 +424,7 @@ class Application(tk.Frame):
                 iw, ih = iw * r, mh * r
             return ImageTk.PhotoImage(self.image_test.resize((int(iw * self.scale), int(ih * self.scale))))
 
+
     # # select directory
     # def select_dir(self):
     #     file = tdialog.askdirectory(parent=root, initialdir='/', title='Select a directory')
