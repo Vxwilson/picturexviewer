@@ -7,6 +7,8 @@ import tkinter.font
 import pickle
 import glob
 import time
+from functools import partial
+
 from PIL import Image, ImageTk, ExifTags
 
 
@@ -26,19 +28,22 @@ class Application(tk.Frame):
         # data
         self.data = self.load_data()
         self.settings_data = self.load_settings()
+        self.paths = self.load_paths()
         # settings
         self.show_label = tk.BooleanVar()
         self.show_label.set(True if not self.settings_data else self.settings_data["show_label"])
-        self.save_path = tk.BooleanVar()
-        self.save_path.set(True if not self.settings_data else self.settings_data["save_path"])
+        self.reopen_images_bool = tk.BooleanVar()
+        self.reopen_images_bool.set(True if not self.settings_data else self.settings_data["reopen_images"])
+        self.save_paths = tk.BooleanVar()
+        self.save_paths.set(True if not self.settings_data else self.settings_data["save_paths"])
         # /settings
         self.exif = None
         self.filenames = None if (
-                    not self.settings_data or not self.data or (self.settings_data and self.save_path is False)) else \
+                    not self.settings_data or not self.data or (self.settings_data and self.reopen_images_bool is False)) else \
         self.data["filenames"]
         self.image_list = []
         self.current_index = 0 if (
-                    not self.settings_data or not self.data or (self.settings_data and self.save_path is False)) else \
+                    not self.settings_data or not self.data or (self.settings_data and self.reopen_images_bool is False)) else \
         self.data["current_index"]
         # print(self.current_index)
         self.images_len = 0
@@ -124,6 +129,9 @@ class Application(tk.Frame):
                 self.read_im(self.filenames, self.current_index)
             except Exception as e:
                 print(e)
+
+        self.refresh_paths()
+
         self.bind_keys()
 
     last_view_time = 0
@@ -149,8 +157,11 @@ class Application(tk.Frame):
 
         show_image_name = ttk.Checkbutton(master=settings, text="Show image label", variable=self.show_label)
         show_image_name.pack(side="left")
-        save_image_path = ttk.Checkbutton(master=settings, text="Reopen images upon launch", variable=self.save_path)
-        save_image_path.pack(side="left")
+        reopen_images = ttk.Checkbutton(master=settings, text="Reopen images upon launch", variable=self.reopen_images_bool)
+        reopen_images.pack(side="left")
+        save_paths_button = ttk.Checkbutton(master=settings, text="Save opened file path", variable=self.save_paths)
+        save_paths_button.pack(side="left")
+
         apply_button = ttk.Button(master=settings, text="Apply",
                                   command=lambda: [self.apply_settings(), settings.destroy()])
         apply_button.pack(side="bottom")
@@ -420,34 +431,76 @@ class Application(tk.Frame):
 
     # select multiple files
     def select_images(self):
+
         self.filenames = tdialog.askopenfilenames(parent=root, filetypes=(
         ("image files", "*.jpg *.png *.jpeg"), ('All files', '*.*')),
                                                   title='Select a directory')
         if self.filenames:
+            if self.save_paths.get():
+                self.add_path(self.filenames)
+            self.refresh_paths()
             self.read_im(self.filenames)
 
-    # def read_images(self, path):
-    #     self.image_list = [Image.open(item) for i in [glob.glob(path+'/*.%s' % ext)
-    #                                                   for ext in ["jpg", "png", "tga"]] for item in i]
-    #     self.max_index = len(self.image_list)
-
-    def update_label(self):
-        self.index_label_text.set(f"{self.current_index + 1}/{self.images_len}")
-        if self.show_label.get():
-            self.image_name.set(f"{self.image_test.filename.split('/')[-1]}")
+    def add_path(self, filename="", clear=False):
+        if clear:
+            print('clear')
+            data = {}
+            with open('Source/paths.txt', 'wb') as file:
+                pickle.dump(data, file)
+            self.paths = self.load_paths()
+            print(self.paths)
         else:
-            self.image_name.set("")
+            if self.paths:
+                self.paths.append({'path': filename})
+                data = {'entry': self.paths}
+            else:
+                data = {"entry": [{"path": filename}]}
+            with open('Source/paths.txt', 'wb') as file:
+                pickle.dump(data, file)
+            self.paths = self.load_paths()
+
+    def refresh_paths(self):
+        try:
+            self.filemenu.delete("Open recent")
+        except:
+            pass
+
+        if not self.save_paths.get():
+            self.add_path(clear=True)
+
+        if self.paths and bool(self.paths) and self.save_paths.get() is True:
+            nested_menu = tk.Menu(self.filemenu)
+
+            for index, profile in enumerate(reversed(self.paths)):
+                nested_menu.add_command(label=f"{profile['path'][0][0:100]}...", command=partial(self.read_im, profile["path"]))
+            # self.filemenu.add_cascade(label="Open recent", menu=nested_menu, index=1)
+            self.filemenu.insert_cascade(label="Open recent", menu=nested_menu, index=1)
+
+    def load_paths(self):
+        if os.path.exists('Source/paths.txt'):
+            try:
+                with open('Source/paths.txt', 'r+b') as file:
+                    return pickle.load(file)["entry"]
+            except (EOFError, KeyError) as e:
+                print(e)
+                return {}
+        else:
+            return {}
 
     def read_im(self, images, index=0):
-        self.image_list = [Image.open(item) for item in images]
-        self.images_len = len(self.image_list)
+        try:
+            self.image_list = [Image.open(item) for item in images]
+            self.images_len = len(self.image_list)
+        except:  # image not found
+            pass
+
         try:
             # tags
             # 256: width; 257: height; 271: brand; 272: model; 274: orientation; 37386: focal length; 306: date
             self.exif = [image._getexif() for image in self.image_list]
 
-            for e in self.exif:
-                    print(e)
+            # for e in self.exif:
+            #         print(e)
         except AttributeError:
             print("no exif detected")
 
@@ -455,6 +508,13 @@ class Application(tk.Frame):
         self.save_settings()
         self.update_label()
         self.open_image_at(index)
+
+    def update_label(self):
+        self.index_label_text.set(f"{self.current_index + 1}/{self.images_len}")
+        if self.show_label.get():
+            self.image_name.set(f"{self.image_test.filename.split('/')[-1]}")
+        else:
+            self.image_name.set("")
 
     def set_timer(self):
         if self.paused is False:
@@ -579,8 +639,6 @@ class Application(tk.Frame):
                 (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image3, anchor='center')
 
-        print(self.current_index)
-
     def prev_image_slideshow(self):
         self.last_view_time = time.time()
 
@@ -649,8 +707,6 @@ class Application(tk.Frame):
             self.canvas_im3 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image3, anchor='center')
-        print(self.current_index)
-
 
     def load_settings(self):
         if os.path.exists('Source/settings.txt'):
@@ -664,12 +720,14 @@ class Application(tk.Frame):
 
     def apply_settings(self):
         self.update_label()
+        self.refresh_paths()
         self.save_settings()
 
     def save_settings(self):
         self.save_data()
         data = {'show_label': self.show_label.get(),
-                'save_path': self.save_path.get(),
+                'reopen_images': self.reopen_images_bool.get(),
+                'save_paths' : self.save_paths.get(),
                 'slide_show_time': self.slide_show_time.get(),
                 'side_count': self.side_count.get(),
                 'screen_dis': self.screen_dis.get()}
@@ -688,7 +746,7 @@ class Application(tk.Frame):
 
     def save_data(self):
         # self.save_settings()
-        if self.save_path.get() is False:
+        if self.reopen_images_bool.get() is False:
             data = {
             }
         else:
@@ -710,7 +768,7 @@ w, h = 1450, 950
 # print(root.winfo_screenwidth())
 root.geometry(f"{w}x{h}+{int(sw / 2 - w / 2)}+{int(sh / 2 - h / 2)}")
 root.minsize(400, 200)
-root.title("PictureXViewer v0.1.6a")
+root.title("PictureXViewer v0.1.9a")
 # root.iconphoto(False, tk.PhotoImage(file='Source/Icon/gradient_less_saturated.png'))
 root.iconbitmap('Source/Icon/picturexviewer.ico')
 root.tk.call('source', 'Source/Style/azure.tcl')
