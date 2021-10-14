@@ -9,7 +9,7 @@ import glob
 import time
 from functools import partial
 
-from PIL import Image, ImageTk, ExifTags
+from PIL import Image, ImageTk, ExifTags, ImageOps
 
 
 class Application(tk.Frame):
@@ -180,9 +180,10 @@ class Application(tk.Frame):
                 """)
         self.help_label.grid(row=0, column=0)
         self.close_frame_button = ttk.Button(master=help_window, text="Close", command=help_window.destroy)
+        # self.help_frame.lower()
         self.close_frame_button.grid(row=1, column=1)
 
-        # self.help_frame.lower()
+
 
     def open_slideshow_initiator(self):
         if not self.image_list:  # nothing to slideshow
@@ -367,7 +368,6 @@ class Application(tk.Frame):
 
     def bind_keys(self):
         # shortcuts
-        # root.bind("<t>", self.toggle_fullscreen)
         root.bind("<Button-3>", self.menu_popup)
 
 
@@ -383,11 +383,10 @@ class Application(tk.Frame):
         root.bind('<Left>', lambda e: self.prev_image())
         root.bind('<Right>', lambda e: self.next_image())
 
-        # root.bind('<s>', lambda e: self.start_slideshow())
-        # root.bind('<Alt-s>', lambda e: self.open_fs_slideshow())
         root.bind('<s>', lambda e: self.open_slideshow_initiator())
+
         # auto resize image
-        root.bind('<Configure>', lambda e: self.resizing())
+        root.bind('<Configure>', lambda e: self.update_image())
 
     def menu_popup(self, event):
         try:
@@ -398,6 +397,7 @@ class Application(tk.Frame):
     def resizing(self, mode=0, event=None):
         self.image_canvas.configure(width=root.winfo_height() * 0.9 * 9 / 16, height=root.winfo_height() * 0.9)
         if self.image_test:
+            # print(f"width, height: {self.image_test.width}, {self.image_test.height}")
             iw, ih = self.image_test.width, self.image_test.height
             # mw, mh = self.master.winfo_width(), self.master.winfo_height()
             if mode == 0:
@@ -448,7 +448,6 @@ class Application(tk.Frame):
             with open('Source/paths.txt', 'wb') as file:
                 pickle.dump(data, file)
             self.paths = self.load_paths()
-            print(self.paths)
         else:
             if self.paths:
                 self.paths.append({'path': filename})
@@ -491,7 +490,8 @@ class Application(tk.Frame):
         try:
             self.image_list = [Image.open(item) for item in images]
             self.images_len = len(self.image_list)
-        except:  # image not found
+        except AttributeError:  # image not found
+            print("error")
             pass
 
         try:
