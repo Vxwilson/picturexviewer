@@ -37,6 +37,8 @@ class Application(tk.Frame):
         self.reopen_images_bool.set(True if not self.settings_data else self.settings_data["reopen_images"])
         self.save_paths = tk.BooleanVar()
         self.save_paths.set(True if not self.settings_data else self.settings_data["save_paths"])
+        self.save_zoom = tk.BooleanVar()
+        self.save_zoom.set(True if not self.settings_data else self.settings_data["save_zoom"])
         # /settings
         self.exif = None
         self.filenames = None if (
@@ -174,6 +176,8 @@ class Application(tk.Frame):
         reopen_images.pack(side="left")
         save_paths_button = ttk.Checkbutton(master=settings, text="Save opened file path", variable=self.save_paths)
         save_paths_button.pack(side="left")
+        save_zoom_setting = ttk.Checkbutton(master=settings, text="Save zoom resolution", variable=self.save_zoom)
+        save_zoom_setting.pack(side="left")
 
         apply_button = ttk.Button(master=settings, text="Apply",
                                   command=lambda: [self.apply_settings(), settings.destroy()])
@@ -417,32 +421,28 @@ class Application(tk.Frame):
 
     def wheel(self, event):
         scale = 1.0
-        print(event.delta)  # multiples of 120
+        print(event.delta)  # multiples of 120  # TODO: scroll size based on delta
         # if event.delta == -120:
         if event.delta < 0:
             scale *= self.delta
             self.imscale *= self.delta
             print('zooming out')
-            #
-            scale = max(scale, 0.04)
-            self.imscale = max(self.imscale, 0.04)
+            scale = max(scale, 0.1)
+            self.imscale = max(self.imscale, 0.1)
         # if event.delta == 120:
         if event.delta > 0:
             scale /= self.delta
             self.imscale /= self.delta
             print('zooming in')
 
-            #
             scale = min(scale, 2.5)
             self.imscale = min(self.imscale, 2.5)
 
-        print(self.imscale)
         x = self.image_canvas.canvasx(event.x)
         y = self.image_canvas.canvasy(event.y)
         # self.image_canvas.scale('all', x, y, scale, scale)
         self.image_canvas.scale('all', self.image_canvas.winfo_width()/2, self.image_canvas.winfo_height()/2, scale, scale)
         # self.image_canvas.config(width=self.image_canvas.winfo_width()*scale, height=self.image_canvas.winfo_height()*scale)
-        # print(self.image_canvas.winfo_width())
 
         self.update_zoom()
         self.update_image()
@@ -484,9 +484,11 @@ class Application(tk.Frame):
                 iw, ih = iw * r, mh * r
 
             # test
-            im1 = ImageTk.PhotoImage(self.image_test.resize((int(iw * self.scale * self.imscale), int(ih * self.scale * self.imscale))))
-            return im1
-            # return ImageTk.PhotoImage(self.image_test.resize((int(iw * self.scale), int(ih * self.scale))))
+            if mode == 0:
+                im1 = ImageTk.PhotoImage(self.image_test.resize((int(iw * self.scale * self.imscale), int(ih * self.scale * self.imscale))))
+                return im1
+            else:
+                return ImageTk.PhotoImage(self.image_test.resize((int(iw * self.scale), int(ih * self.scale))))
 
 
     # # select directory
@@ -634,6 +636,8 @@ class Application(tk.Frame):
         else:
             self.current_index -= ite
         self.open_image_at(self.current_index)
+        if self.save_zoom.get() is False:
+            self.reset_zoom()
 
     def next_image(self, ite=1):
         if self.current_index + ite >= self.images_len:
@@ -641,6 +645,8 @@ class Application(tk.Frame):
         else:
             self.current_index += ite
         self.open_image_at(self.current_index)
+        if self.save_zoom.get() is False:
+            self.reset_zoom()
 
     def next_image_slideshow(self):
         self.last_view_time = time.time()
@@ -803,6 +809,7 @@ class Application(tk.Frame):
         data = {'show_label': self.show_label.get(),
                 'reopen_images': self.reopen_images_bool.get(),
                 'save_paths' : self.save_paths.get(),
+                'save_zoom' : self.save_zoom.get(),
                 'slide_show_time': self.slide_show_time.get(),
                 'side_count': self.side_count.get(),
                 'screen_dis': self.screen_dis.get()}
