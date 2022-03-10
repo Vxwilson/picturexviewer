@@ -1,4 +1,5 @@
 import ctypes
+import math
 import os
 import tkinter as tk
 import tkinter.filedialog as tdialog
@@ -51,6 +52,9 @@ class Application(tk.Frame):
         self.index_label_text.set("0/0")
         self.image_name = tk.StringVar()
         self.image_name.set('')
+
+        self.zoom_label_text = tk.StringVar()
+        self.zoom_label_text.set("100%")
 
         self.slide_show_time = tk.IntVar()
         self.slide_show_time.set(3 if (not self.settings_data or "slide_show_time" not in self.settings_data)
@@ -122,8 +126,10 @@ class Application(tk.Frame):
             .place(anchor='center', relx=0.5, rely=0.5)
         self.next_button = ttk.Button(self.fram, text="Next", command=self.next_image, width=5) \
             .place(anchor='center', relx=0.55, rely=0.5)
-        self.resize_button = ttk.Button(self.fram, text="Reset Zoom", command=self.reset_zoom, width=4) \
-            .place(anchor='center', relx=0.6, rely=0.5)
+        self.zoom_label = ttk.Label(self.fram, textvariable=self.zoom_label_text) \
+            .place(anchor='center', relx=0.595, rely=0.5)
+        self.resize_button = ttk.Button(self.fram, text="Reset Zoom", command=self.reset_zoom, width=10) \
+            .place(anchor='center', relx=0.645, rely=0.5)
         self.slideshow_button = ttk.Button(self.fram, text="Slideshow", command=self.open_slideshow_initiator).pack(
             side='right')
         self.fram.pack(side='bottom', fill='both')
@@ -397,9 +403,10 @@ class Application(tk.Frame):
         root.bind('<Configure>', self.check_image_resize)
 
     def check_image_resize(self, event):
+        # print(event.width)   # unreliable as final width is not correct
         if self.resizer is not None:
             root.after_cancel(self.resizer)
-        self.resizer = root.after(500, self.update_image)
+        self.resizer = root.after(400, self.update_image)
 
 
     def menu_popup(self, event):
@@ -410,26 +417,40 @@ class Application(tk.Frame):
 
     def wheel(self, event):
         scale = 1.0
-        # print(event.delta)
-        if event.delta == -120:
+        print(event.delta)  # multiples of 120
+        # if event.delta == -120:
+        if event.delta < 0:
             scale *= self.delta
             self.imscale *= self.delta
-        if event.delta == 120:
+            print('zooming out')
+            #
+            scale = max(scale, 0.04)
+            self.imscale = max(self.imscale, 0.04)
+        # if event.delta == 120:
+        if event.delta > 0:
             scale /= self.delta
             self.imscale /= self.delta
+            print('zooming in')
+
+            #
+            scale = min(scale, 2.5)
+            self.imscale = min(self.imscale, 2.5)
 
         print(self.imscale)
         x = self.image_canvas.canvasx(event.x)
         y = self.image_canvas.canvasy(event.y)
         # self.image_canvas.scale('all', x, y, scale, scale)
-        # self.image_canvas.scale('all', self.image_canvas.winfo_width()/2, self.image_canvas.winfo_height()/2, scale, scale)
-        self.image_canvas.config(width=self.image_canvas.winfo_width()*scale, height=self.image_canvas.winfo_height()*scale)
-        print(self.image_canvas.winfo_width())
+        self.image_canvas.scale('all', self.image_canvas.winfo_width()/2, self.image_canvas.winfo_height()/2, scale, scale)
+        # self.image_canvas.config(width=self.image_canvas.winfo_width()*scale, height=self.image_canvas.winfo_height()*scale)
+        # print(self.image_canvas.winfo_width())
+
+        self.update_zoom()
         self.update_image()
 
     def reset_zoom(self):
         self.imscale = 1
         self.update_image()
+        self.update_zoom()
 
     def resizing(self, mode=0, event=None):
         # self.image_canvas.configure(width=root.winfo_height() * 0.9 * 9 / 16, height=root.winfo_height() * 0.9)
@@ -464,7 +485,6 @@ class Application(tk.Frame):
 
             # test
             im1 = ImageTk.PhotoImage(self.image_test.resize((int(iw * self.scale * self.imscale), int(ih * self.scale * self.imscale))))
-            # im1._PhotoImage__photo.zoom(2)
             return im1
             # return ImageTk.PhotoImage(self.image_test.resize((int(iw * self.scale), int(ih * self.scale))))
 
@@ -562,6 +582,14 @@ class Application(tk.Frame):
             self.image_name.set(f"{self.image_test.filename.split('/')[-1]}")
         else:
             self.image_name.set("")
+
+    def update_zoom(self):
+        x = "{:.0f}".format(self.imscale * 100)
+        self.zoom_label_text.set(f"{x}%")
+        # if self.show_label.get():
+        #     self.image_name.set(f"{self.image_test.filename.split('/')[-1]}")
+        # else:
+        #     self.image_name.set("")
 
     def set_timer(self):
         if self.paused is False:
