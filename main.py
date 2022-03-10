@@ -98,9 +98,12 @@ class Application(tk.Frame):
         # main widgets
         self.image_test = Image.open("Source/Icon/gradient_less_saturated.png")
 
-        self.image_canvas = tk.Canvas(width=500, height=768, background='#3B3D3F')
+        self.image_canvas = tk.Canvas(width=1200, height=800, background='#3B3D3F')
         self.image_canvas.pack(anchor='center', expand='yes')
         # self.image_canvas.place(anchor='n', relx=0.5, rely=0)
+        self.imscale = 1.0
+        self.delta = 0.75
+
         root.update()
         self.canvas_im = self.image_canvas.create_image(
             (self.image_canvas.winfo_width() / 2, self.image_canvas.winfo_height() / 2),
@@ -119,6 +122,8 @@ class Application(tk.Frame):
             .place(anchor='center', relx=0.5, rely=0.5)
         self.next_button = ttk.Button(self.fram, text="Next", command=self.next_image, width=5) \
             .place(anchor='center', relx=0.55, rely=0.5)
+        self.resize_button = ttk.Button(self.fram, text="Reset Zoom", command=self.reset_zoom, width=4) \
+            .place(anchor='center', relx=0.6, rely=0.5)
         self.slideshow_button = ttk.Button(self.fram, text="Slideshow", command=self.open_slideshow_initiator).pack(
             side='right')
         self.fram.pack(side='bottom', fill='both')
@@ -133,6 +138,8 @@ class Application(tk.Frame):
         self.refresh_paths()
 
         self.bind_keys()
+        self.resizer = None
+
 
     last_view_time = 0
     paused = False
@@ -182,7 +189,6 @@ class Application(tk.Frame):
         self.close_frame_button = ttk.Button(master=help_window, text="Close", command=help_window.destroy)
         # self.help_frame.lower()
         self.close_frame_button.grid(row=1, column=1)
-
 
 
     def open_slideshow_initiator(self):
@@ -367,6 +373,8 @@ class Application(tk.Frame):
         exif_window.bind('<Escape>', lambda e: exif_window.destroy())
 
     def bind_keys(self):
+        self.image_canvas.bind('<MouseWheel>', self.wheel)
+
         # shortcuts
         root.bind("<Button-3>", self.menu_popup)
 
@@ -386,7 +394,13 @@ class Application(tk.Frame):
         root.bind('<s>', lambda e: self.open_slideshow_initiator())
 
         # auto resize image
-        root.bind('<Configure>', lambda e: self.update_image())
+        root.bind('<Configure>', self.check_image_resize)
+
+    def check_image_resize(self, event):
+        if self.resizer is not None:
+            root.after_cancel(self.resizer)
+        self.resizer = root.after(500, self.update_image)
+
 
     def menu_popup(self, event):
         try:
@@ -394,14 +408,41 @@ class Application(tk.Frame):
         finally:
             self.popup.grab_release()
 
+    def wheel(self, event):
+        scale = 1.0
+        # print(event.delta)
+        if event.delta == -120:
+            scale *= self.delta
+            self.imscale *= self.delta
+        if event.delta == 120:
+            scale /= self.delta
+            self.imscale /= self.delta
+
+        print(self.imscale)
+        x = self.image_canvas.canvasx(event.x)
+        y = self.image_canvas.canvasy(event.y)
+        # self.image_canvas.scale('all', x, y, scale, scale)
+        # self.image_canvas.scale('all', self.image_canvas.winfo_width()/2, self.image_canvas.winfo_height()/2, scale, scale)
+        self.image_canvas.config(width=self.image_canvas.winfo_width()*scale, height=self.image_canvas.winfo_height()*scale)
+        print(self.image_canvas.winfo_width())
+        self.update_image()
+
+    def reset_zoom(self):
+        self.imscale = 1
+        self.update_image()
+
     def resizing(self, mode=0, event=None):
-        self.image_canvas.configure(width=root.winfo_height() * 0.9 * 9 / 16, height=root.winfo_height() * 0.9)
-        if self.image_test:
+        # self.image_canvas.configure(width=root.winfo_height() * 0.9 * 9 / 16, height=root.winfo_height() * 0.9)
+        if self.image_test:  # true in most times
             # print(f"width, height: {self.image_test.width}, {self.image_test.height}")
             iw, ih = self.image_test.width, self.image_test.height
+            new_size = int(1), int(1)
             # mw, mh = self.master.winfo_width(), self.master.winfo_height()
             if mode == 0:
                 mw, mh = self.image_canvas.winfo_width(), self.image_canvas.winfo_height()
+
+                # testing
+                new_size = int(self.imscale * iw), int(self.imscale * ih)
             # slideshow modes
             elif mode == 1:
                 mw, mh = self.image_canvas_ss.winfo_width(), self.image_canvas_ss.winfo_height() * 0.99
@@ -420,7 +461,12 @@ class Application(tk.Frame):
                 iw = iw * (mh / ih)
                 r = mw / iw if (iw / mw) > 1 else 1
                 iw, ih = iw * r, mh * r
-            return ImageTk.PhotoImage(self.image_test.resize((int(iw * self.scale), int(ih * self.scale))))
+
+            # test
+            im1 = ImageTk.PhotoImage(self.image_test.resize((int(iw * self.scale * self.imscale), int(ih * self.scale * self.imscale))))
+            # im1._PhotoImage__photo.zoom(2)
+            return im1
+            # return ImageTk.PhotoImage(self.image_test.resize((int(iw * self.scale), int(ih * self.scale))))
 
 
     # # select directory
@@ -503,6 +549,7 @@ class Application(tk.Frame):
             #         print(e)
         except AttributeError:
             print("no exif detected")
+
 
         self.current_index = 0
         self.save_settings()
