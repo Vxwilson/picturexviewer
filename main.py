@@ -435,8 +435,8 @@ class Application(tk.Frame):
             self.imscale /= self.delta
             print('zooming in')
 
-            scale = min(scale, 2.5)
-            self.imscale = min(self.imscale, 2.5)
+            scale = min(scale, 2.25)
+            self.imscale = min(self.imscale, 2.25)
 
         x = self.image_canvas.canvasx(event.x)
         y = self.image_canvas.canvasy(event.y)
@@ -526,7 +526,7 @@ class Application(tk.Frame):
                 pickle.dump(data, file)
             self.paths = self.load_paths()
 
-    def refresh_paths(self):
+    def refresh_paths(self):  # TODO maybe remove middle part of a path, making path easier to recognize
         try:
             self.filemenu.delete("Open recent")
         except:
@@ -538,8 +538,10 @@ class Application(tk.Frame):
         if self.paths and bool(self.paths) and self.save_paths.get() is True:
             nested_menu = tk.Menu(self.filemenu)
 
-            for index, profile in enumerate(reversed(self.paths)):
-                nested_menu.add_command(label=f"{profile['path'][0][0:100]}...", command=partial(self.read_im, profile["path"]))
+            for index, profile in enumerate(reversed(self.paths)):  # limit entries to 15
+                if index == 15:
+                    break
+                nested_menu.add_command(label=f"{(index+1)}: {profile['path'][0][0:100]}...", command=partial(self.read_im, profile["path"]))
             # self.filemenu.add_cascade(label="Open recent", menu=nested_menu, index=1)
             self.filemenu.insert_cascade(label="Open recent", menu=nested_menu, index=1)
 
