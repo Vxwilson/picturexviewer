@@ -179,6 +179,9 @@ class Application(tk.Frame):
         save_zoom_setting = ttk.Checkbutton(master=settings, text="Save zoom resolution", variable=self.save_zoom)
         save_zoom_setting.pack(side="left")
 
+        reset_path_button = ttk.Button(master=settings, text="Reset History", command=lambda:[self.add_path(clear=True)])
+        reset_path_button.pack(side="bottom")
+
         apply_button = ttk.Button(master=settings, text="Apply",
                                   command=lambda: [self.apply_settings(), settings.destroy()])
         apply_button.pack(side="bottom")
@@ -451,6 +454,7 @@ class Application(tk.Frame):
         self.imscale = 1
         self.update_image()
         self.update_zoom()
+
 
     def resizing(self, mode=0, event=None):
         # self.image_canvas.configure(width=root.winfo_height() * 0.9 * 9 / 16, height=root.winfo_height() * 0.9)
