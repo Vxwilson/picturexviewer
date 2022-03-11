@@ -55,6 +55,9 @@ class Application(tk.Frame):
         self.image_name = tk.StringVar()
         self.image_name.set('')
 
+        self.ss_label = tk.StringVar()
+        self.ss_label.set("0/0")
+
         self.zoom_label_text = tk.StringVar()
         self.zoom_label_text.set("100%")
 
@@ -124,12 +127,12 @@ class Application(tk.Frame):
             side='left')
         self.prev_button = ttk.Button(self.fram, text="Prev", command=self.prev_image, width=5) \
             .place(anchor='center', relx=0.45, rely=0.5)
-        self.index_label = ttk.Label(self.fram, textvariable=self.index_label_text) \
+        self.index_label = ttk.Label(self.fram, textvariable=self.index_label_text, background="#333333", foreground="#81878B") \
             .place(anchor='center', relx=0.5, rely=0.5)
         self.next_button = ttk.Button(self.fram, text="Next", command=self.next_image, width=5) \
             .place(anchor='center', relx=0.55, rely=0.5)
-        self.zoom_label = ttk.Label(self.fram, textvariable=self.zoom_label_text) \
-            .place(anchor='center', relx=0.595, rely=0.5)
+        self.zoom_label = ttk.Label(self.fram, textvariable=self.zoom_label_text, background="#333333", foreground="#81878B") \
+            .place(anchor='center', relx=0.597, rely=0.5)
         self.resize_button = ttk.Button(self.fram, text="Reset Zoom", command=self.reset_zoom, width=10) \
             .place(anchor='center', relx=0.645, rely=0.5)
         self.slideshow_button = ttk.Button(self.fram, text="Slideshow", command=self.open_slideshow_initiator).pack(
@@ -251,6 +254,7 @@ class Application(tk.Frame):
         fs_slideshow.bind("<Left>", lambda e: self.prev_image_slideshow())
         fs_slideshow.bind("<Right>", lambda e: self.next_image_slideshow())
         fs_slideshow.bind("<t>", lambda e: self.toggle_pause_slideshow())
+        fs_slideshow.bind("<Control-MouseWheel>", self.slideshow_wheel)
         fs_slideshow.state('zoomed')
         fs_slideshow.overrideredirect(1)
         root.withdraw()
@@ -329,6 +333,11 @@ class Application(tk.Frame):
         self.last_view_time = time.time()
         self.set_timer()
 
+        self.index_label = ttk.Label(self.image_canvas_ss, textvariable=self.ss_label, background="#3B3D3F", foreground="#81878B") \
+            .place(anchor='center', relx=0.5, rely=0.95)
+
+        self.update_label(1)
+
     def show_exif(self):
         exif_window = tk.Toplevel(root)
         exif_window.title("EXIF")
@@ -386,7 +395,7 @@ class Application(tk.Frame):
         exif_window.bind('<Escape>', lambda e: exif_window.destroy())
 
     def bind_keys(self):
-        self.image_canvas.bind('<MouseWheel>', self.wheel)
+        self.image_canvas.bind('<MouseWheel>', self.wheel)  # TODO add control-mousewheel to navigate images
 
         # shortcuts
         root.bind("<Button-3>", self.menu_popup)
@@ -422,6 +431,14 @@ class Application(tk.Frame):
         finally:
             self.popup.grab_release()
 
+
+    def slideshow_wheel(self, event):
+        if event.delta < 0:
+            self.prev_image_slideshow()
+        elif event.delta > 0:
+            self.next_image_slideshow()
+
+
     def wheel(self, event):
         scale = 1.0
         print(event.delta)  # multiples of 120  # TODO: scroll size based on delta
@@ -433,7 +450,7 @@ class Application(tk.Frame):
             scale = max(scale, 0.1)
             self.imscale = max(self.imscale, 0.1)
         # if event.delta == 120:
-        if event.delta > 0:
+        elif event.delta > 0:
             scale /= self.delta
             self.imscale /= self.delta
             print('zooming in')
@@ -466,8 +483,6 @@ class Application(tk.Frame):
             if mode == 0:
                 mw, mh = self.image_canvas.winfo_width(), self.image_canvas.winfo_height()
 
-                # testing
-                new_size = int(self.imscale * iw), int(self.imscale * ih)
             # slideshow modes
             elif mode == 1:
                 mw, mh = self.image_canvas_ss.winfo_width(), self.image_canvas_ss.winfo_height() * 0.99
@@ -584,12 +599,15 @@ class Application(tk.Frame):
         self.update_label()
         self.open_image_at(index)
 
-    def update_label(self):
-        self.index_label_text.set(f"{self.current_index + 1}/{self.images_len}")
-        if self.show_label.get():
-            self.image_name.set(f"{self.image_test.filename.split('/')[-1]}")
-        else:
-            self.image_name.set("")
+    def update_label(self, mode=0):
+        if mode == 0:
+            self.index_label_text.set(f"{self.current_index + 1}/{self.images_len}")
+            if self.show_label.get():
+                self.image_name.set(f"{self.image_test.filename.split('/')[-1]}")
+            else:
+                self.image_name.set("")
+        elif mode == 1:  # slideshow label
+            self.ss_label.set(f"{self.current_index + 1}/{self.images_len}")
 
     def update_zoom(self):
         x = "{:.0f}".format(self.imscale * 100)
@@ -726,6 +744,8 @@ class Application(tk.Frame):
                 (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image3, anchor='center')
 
+            self.update_label(1)
+
     def prev_image_slideshow(self):
         self.last_view_time = time.time()
 
@@ -794,6 +814,8 @@ class Application(tk.Frame):
             self.canvas_im3 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image3, anchor='center')
+            self.update_label(1)
+
 
     def load_settings(self):
         if os.path.exists('Source/settings.txt'):
@@ -856,7 +878,7 @@ w, h = 1450, 950
 # print(root.winfo_screenwidth())
 root.geometry(f"{w}x{h}+{int(sw / 2 - w / 2)}+{int(sh / 2 - h / 2)}")
 root.minsize(400, 200)
-root.title("PictureXViewer v0.1.9a")
+root.title("PictureXViewer v0.2.0a")
 # root.iconphoto(False, tk.PhotoImage(file='Source/Icon/gradient_less_saturated.png'))
 root.iconbitmap('Source/Icon/picturexviewer.ico')
 root.tk.call('source', 'Source/Style/azure.tcl')
