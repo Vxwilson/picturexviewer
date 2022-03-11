@@ -433,9 +433,9 @@ class Application(tk.Frame):
 
 
     def slideshow_wheel(self, event):
-        if event.delta < 0:
+        if event.delta > 0:
             self.prev_image_slideshow()
-        elif event.delta > 0:
+        elif event.delta < 0:
             self.next_image_slideshow()
 
 
