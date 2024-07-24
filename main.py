@@ -66,6 +66,9 @@ class Application(tk.Frame):
         self.save_paths.set(True if not self.settings_data else self.settings_data["save_paths"])
         self.save_zoom = tk.BooleanVar()
         self.save_zoom.set(True if not self.settings_data else self.settings_data["save_zoom"])
+        self.auto_sort = tk.BooleanVar()
+        self.auto_sort.set(True if not self.settings_data else self.settings_data["auto_sort"])
+
         # /settings
         self.exif = None
         self.filenames = None if (
@@ -84,6 +87,9 @@ class Application(tk.Frame):
 
         self.ss_label = tk.StringVar()
         self.ss_label.set("0/0")
+
+        self.paused_label = tk.StringVar()
+        self.paused_label.set(" ")
 
         self.zoom_label_text = tk.StringVar()
         self.zoom_label_text.set("100%")
@@ -138,7 +144,7 @@ class Application(tk.Frame):
         self.image_canvas.pack(anchor='center', expand='yes')
         # self.image_canvas.place(anchor='n', relx=0.5, rely=0)
         self.imscale = 1.0
-        self.delta = 0.75
+        self.delta = 0.85
 
         root.update()
         self.canvas_im = self.image_canvas.create_image(
@@ -208,6 +214,8 @@ class Application(tk.Frame):
         save_paths_button.pack(side="left")
         save_zoom_setting = ttk.Checkbutton(master=settings, text="Save zoom resolution", variable=self.save_zoom)
         save_zoom_setting.pack(side="left")
+        auto_sort = ttk.Checkbutton(master=settings, text="Sort images by name", variable=self.auto_sort)
+        auto_sort.pack(side="left")
 
         reset_path_button = ttk.Button(master=settings, text="Reset History", command=lambda:[self.add_path(clear=True)])
         reset_path_button.pack(side="bottom")
@@ -272,15 +280,31 @@ class Application(tk.Frame):
     def open_fs_slideshow(self):
         fs_slideshow = tk.Toplevel(root)
         if self.screen_dis.get() == 1:
+            print('is 1, ',f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+0+0")
             fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+0+0")
-        else:
-            fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+{-self.screen_two_size[0]}+0")
+        elif self.screen_dis.get() == 2:
+            print('is 2 ', f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+{-self.screen_two_size[0]}+0")
+
+            # check if screen 2 is on the left or right
+            if self.secondary_on_left:
+                fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+{-self.screen_two_size[0]}+0")
+            else:
+                fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+{self.screen_one_size[0]}+0")
+
+        elif self.screen_dis.get() == 3:
+            fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+{self.screen_one_size[0]}+0")
 
         fs_slideshow.title("Settings")
+        # right click
+        fs_slideshow.bind("<Button-3>", lambda e: [fs_slideshow.destroy(), root.deiconify(), self.update_image()])
         fs_slideshow.bind("<Escape>", lambda e: [fs_slideshow.destroy(), root.deiconify(), self.update_image()])
         fs_slideshow.bind("<Left>", lambda e: self.prev_image_slideshow())
+        fs_slideshow.bind("<Control-Left>", lambda e: self.prev_image_slideshow(move_one=True))
         fs_slideshow.bind("<Right>", lambda e: self.next_image_slideshow())
+        fs_slideshow.bind("<Control-Right>", lambda e: self.next_image_slideshow(move_one=True))
         fs_slideshow.bind("<t>", lambda e: self.toggle_pause_slideshow())
+        # left click
+        fs_slideshow.bind("<Button-1>", lambda e: self.toggle_pause_slideshow())
         fs_slideshow.bind("<Control-MouseWheel>", self.slideshow_wheel)
 
         if platform.system() == "Windows":
@@ -296,8 +320,14 @@ class Application(tk.Frame):
         self.image_canvas_ss.pack(anchor='center', expand='yes')
         root.update()
 
-        if self.image_canvas_ss is not None:
-            self.image_canvas_ss.delete('all')
+        # if self.image_canvas_ss is not None:
+        #     self.image_canvas_ss.delete('all')
+
+        # print(self.current_index)
+        # self.current_index = self.get_next_img_index(0)
+        # self.next_image_slideshow(move_one=True)
+        # self.prev_image_slideshow(move_one=True)
+        # return
 
         if self.side_count.get() == 1:
             self.image_test = self.image_list[self.current_index]
@@ -361,11 +391,16 @@ class Application(tk.Frame):
             self.canvas_im3 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image3, anchor='center')
+
         self.last_view_time = time.time()
         self.set_timer()
 
         self.index_label = ttk.Label(self.image_canvas_ss, textvariable=self.ss_label, background="#3B3D3F", foreground="#81878B") \
-            .place(anchor='center', relx=0.5, rely=0.95)
+            .place(anchor='center', relx=0.5, rely=0.97)
+
+        # paused indicator label at top left corner
+        self.pause_label = ttk.Label(self.image_canvas_ss, textvariable=self.paused_label, background="#3B3D3F", foreground="#81878B") \
+            .place(anchor='center', relx=0.02, rely=0.02)
 
         self.update_label(1)
 
@@ -433,7 +468,15 @@ class Application(tk.Frame):
 
 
         root.bind('<Control-o>', lambda e: self.select_images())
+        root.bind('<o>', lambda e: self.select_images())
         root.bind('<Control-s>', lambda e: self.save_data())
+        # mouse left click
+        root.bind('<Button-1>', lambda e: self.next_image())
+        # mouse middle click
+        root.bind('<Button-2>', lambda e: self.select_images())
+        # right click
+        root.bind('<Button-3>', lambda e: self.open_slideshow_initiator())
+
 
         #popup menu
         root.bind('<Control-e>', lambda e: self.show_exif())
@@ -445,6 +488,7 @@ class Application(tk.Frame):
         root.bind('<Right>', lambda e: self.next_image())
 
         root.bind('<s>', lambda e: self.open_slideshow_initiator())
+        root.bind('<Control-s>', lambda e: self.toggle_sort())
 
         # auto resize image
         root.bind('<Configure>', self.check_image_resize)
@@ -463,40 +507,67 @@ class Application(tk.Frame):
             self.popup.grab_release()
 
 
-    def slideshow_wheel(self, event):
-        if event.delta < 0:
-            self.prev_image_slideshow()
-        elif event.delta > 0:
-            self.next_image_slideshow()
+    def slideshow_wheel(self, event, move_one=False):
+        if event.delta > 0:
+            self.prev_image_slideshow(move_one)
+        elif event.delta < 0:
+            self.next_image_slideshow(move_one)
 
 
-    def wheel(self, event):
-        scale = 1.0
-        print(event.delta)  # multiples of 120  # TODO: scroll size based on delta
-        # if event.delta == -120:
+    def wheel(self, event):  # TODO: zoom origin based on pointer
+        print(event.x, event.y)
+
+        # get coordinates of the image in the canvas
+
+
+        event.delta /= 120
+
+        t = min(1, abs(event.delta))
         if event.delta < 0:
-            scale *= self.delta
-            self.imscale *= self.delta
-            print('zooming out')
-            scale = max(scale, 0.1)
+            self.imscale *= pow(self.delta, t)
             self.imscale = max(self.imscale, 0.1)
-        # if event.delta == 120:
         elif event.delta > 0:
-            scale /= self.delta
-            self.imscale /= self.delta
-            print('zooming in')
-
-            scale = min(scale, 2.25)
+            self.imscale /= pow(self.delta, t)
             self.imscale = min(self.imscale, 2.25)
 
-        x = self.image_canvas.canvasx(event.x)
-        y = self.image_canvas.canvasy(event.y)
-        # self.image_canvas.scale('all', x, y, scale, scale)
-        self.image_canvas.scale('all', self.image_canvas.winfo_width()/2, self.image_canvas.winfo_height()/2, scale, scale)
-        # self.image_canvas.config(width=self.image_canvas.winfo_width()*scale, height=self.image_canvas.winfo_height()*scale)
 
+
+        # Calculate new zoomed image dimensions
+        new_width = int(self.image_test.width * self.imscale)
+        new_height = int(self.image_test.height * self.imscale)
+
+        # bound event x to the image x coordinates on the canvas
+
+        print(self.image_canvas.coords(self.image_canvas.find_withtag("IMG")[0]))
+        # calculate the new top left coordinate of the cropping
+        # based on the mouse position and the new image dimensions
+        x0 = event.x - (new_width / 2)
+        y0 = event.y - (new_height / 2)
+
+        # Crop the image
+
+        if self.imscale >1:
+            self.cropped = self.image_test.crop((x0, y0, x0 + new_width, y0 + new_height))
+        else:
+            self.cropped = self.image_test.crop((0, 0, self.image_test.width, self.image_test.height))
+
+        # Create new zoomed image
+        zoomed_image = ImageTk.PhotoImage(self.cropped.resize((new_width, new_height)))
+
+
+        # Create new zoomed image
+        # zoomed_image = ImageTk.PhotoImage(self.image_test.resize((new_width, new_height)))
+        print(zoomed_image)
+        # Update displayed image
+        self.image_canvas.delete('all')
+
+        # self.canvas_im = self.image_canvas.create_image((event.x, event.y), image=zoomed_image, anchor='center')
+        self.canvas_im = self.image_canvas.create_image((event.x, event.y), image=zoomed_image, anchor='center', tags="IMG")
+        self.current_image = zoomed_image
+
+        self.update_label()
         self.update_zoom()
-        self.update_image()
+
 
     def reset_zoom(self):
         self.imscale = 1
@@ -518,10 +589,10 @@ class Application(tk.Frame):
             elif mode == 1:
                 mw, mh = self.image_canvas_ss.winfo_width(), self.image_canvas_ss.winfo_height() * 0.99
             elif mode == 2:
-                mw, mh = self.image_canvas_ss.winfo_width(), self.image_canvas_ss.winfo_height() * 0.98
+                mw, mh = self.image_canvas_ss.winfo_width(), self.image_canvas_ss.winfo_height() * 0.99
                 mw /= 2
             elif mode == 3:
-                mw, mh = self.image_canvas_ss.winfo_width(), self.image_canvas_ss.winfo_height() * 0.85
+                mw, mh = self.image_canvas_ss.winfo_width(), self.image_canvas_ss.winfo_height() * 0.95
                 mw /= 3
 
             if iw > ih:
@@ -550,14 +621,27 @@ class Application(tk.Frame):
     # select multiple files
     def select_images(self):
 
+        # self.foldernames = tdialog.askdirectory(title='Select a directory')
+        # print("You chose %s" % self.foldernames)
+
         self.filenames = tdialog.askopenfilenames(parent=root, filetypes=(
-        ("image files", "*.jpg *.png *.jpeg"), ('All files', '*.*')),
-                                                  title='Select a directory')
+        ("image files", "*.jpg *.png *.jpeg *.webp"), ('All files', '*.*')),
+                                                 title='Select images')
+        self.filenames = list(self.filenames)
+        self.old_filenames = self.filenames
+
+        if self.auto_sort.get():
+            self.filenames = sorted(self.filenames)
+
         if self.filenames:
             if self.save_paths.get():
                 self.add_path(self.filenames)
             self.refresh_paths()
             self.read_im(self.filenames)
+
+    def toggle_sort(self):
+        self.old_filenames, self.filenames = self.filenames, self.old_filenames
+        self.read_im(self.filenames)
 
     def add_path(self, filename="", clear=False):
         if clear:
@@ -673,6 +757,10 @@ class Application(tk.Frame):
         self.paused = not self.paused
         if self.paused is False:
             self.set_timer()
+            self.paused_label.set("")
+        else:
+            # set paused label to "paused"
+            self.paused_label.set("Paused")
 
     def update_image(self):
         self.image_canvas.delete('all')
@@ -680,6 +768,7 @@ class Application(tk.Frame):
         self.canvas_im = self.image_canvas.create_image(
             (self.image_canvas.winfo_width() / 2, self.image_canvas.winfo_height() / 2),
             image=self.current_image, anchor='center')
+
         self.update_label()
 
     def open_image_at(self, index):
@@ -704,7 +793,23 @@ class Application(tk.Frame):
         if self.save_zoom.get() is False:
             self.reset_zoom()
 
-    def next_image_slideshow(self):
+    # def next_image_slideshow_by_one(self):
+    #     # same as next_image_slideshow but only goes by one image
+    #     self.last_view_time = time.time()
+    #
+    #     if self.side_count.get() == 1:
+    #         self.next_image_slideshow()
+    #     elif self.side_count.get() == 2:
+
+    def get_next_img_index(self, distance): # positive distance means to the right
+        if self.current_index + distance >= self.images_len:
+            return self.current_index + distance - self.images_len
+        elif self.current_index + distance < 0:
+            return self.current_index + (self.images_len + distance)
+        else:
+            return self.current_index + distance
+
+    def next_image_slideshow(self, move_one=False):
         self.last_view_time = time.time()
 
         # if self.image_canvas_ss is not None:
@@ -712,10 +817,7 @@ class Application(tk.Frame):
 
         if self.side_count.get() == 1:
 
-            if self.current_index + 1 >= self.images_len:
-                self.current_index = 0
-            else:
-                self.current_index += 1
+            self.current_index = self.get_next_img_index(1)
             self.image_test = self.image_list[self.current_index]
             self.current_image = self.resizing(self.side_count.get())
             self.canvas_im = self.image_canvas_ss.create_image(
@@ -724,21 +826,18 @@ class Application(tk.Frame):
 
         elif self.side_count.get() == 2:
 
-            if self.current_index + 1 >= self.images_len:
-                self.current_index = 0
+            if move_one:
+                self.current_index = self.get_next_img_index(1)
             else:
-                self.current_index += 1
+                self.current_index = self.get_next_img_index(2)
+
             self.image_test = self.image_list[self.current_index]
             self.current_image = self.resizing(self.side_count.get())
             self.canvas_im = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 4, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image, anchor='center')
 
-            if self.current_index + 1 >= self.images_len:
-                self.current_index = 0
-            else:
-                self.current_index += 1
-            self.image_test = self.image_list[self.current_index]
+            self.image_test = self.image_list[self.get_next_img_index(1)]
             self.current_image2 = self.resizing(self.side_count.get())
             self.canvas_im2 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 4 * 3, self.image_canvas_ss.winfo_height() / 2),
@@ -746,49 +845,114 @@ class Application(tk.Frame):
 
         elif self.side_count.get() == 3:
 
-            if self.current_index + 1 >= self.images_len:
-                self.current_index = 0
+            if move_one:
+                self.current_index = self.get_next_img_index(1)
             else:
-                self.current_index += 1
+                self.current_index = self.get_next_img_index(3)
+
             self.image_test = self.image_list[self.current_index]
             self.current_image = self.resizing(self.side_count.get())
             self.canvas_im = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 6, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image, anchor='center')
 
-            if self.current_index + 1 >= self.images_len:
-                self.current_index = 0
-            else:
-                self.current_index += 1
-            self.image_test = self.image_list[self.current_index]
+            self.image_test = self.image_list[self.get_next_img_index(1)]
             self.current_image2 = self.resizing(self.side_count.get())
             self.canvas_im2 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 2, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image2, anchor='center')
 
-            if self.current_index + 1 >= self.images_len:
-                self.current_index = 0
-            else:
-                self.current_index += 1
-            self.image_test = self.image_list[self.current_index]
+            self.image_test = self.image_list[self.get_next_img_index(2)]
             self.current_image3 = self.resizing(self.side_count.get())
             self.canvas_im3 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image3, anchor='center')
 
-            self.update_label(1)
-
-    def prev_image_slideshow(self):
+        self.update_label(1)
+    #
+    # def next_image_slideshow(self):
+    #     self.last_view_time = time.time()
+    #
+    #     # if self.image_canvas_ss is not None:
+    #     #     # self.image_canvas_ss.delete('all')
+    #
+    #     if self.side_count.get() == 1:
+    #
+    #         if self.current_index + 1 >= self.images_len:
+    #             self.current_index = 0
+    #         else:
+    #             self.current_index += 1
+    #         self.image_test = self.image_list[self.current_index]
+    #         self.current_image = self.resizing(self.side_count.get())
+    #         self.canvas_im = self.image_canvas_ss.create_image(
+    #             (self.image_canvas_ss.winfo_width() / 2, self.image_canvas_ss.winfo_height() / 2),
+    #             image=self.current_image, anchor='center')
+    #
+    #     elif self.side_count.get() == 2:
+    #
+    #         if self.current_index + 1 >= self.images_len:
+    #             self.current_index = 0
+    #         else:
+    #             self.current_index += 1
+    #         self.image_test = self.image_list[self.current_index]
+    #         self.current_image = self.resizing(self.side_count.get())
+    #         self.canvas_im = self.image_canvas_ss.create_image(
+    #             (self.image_canvas_ss.winfo_width() / 4, self.image_canvas_ss.winfo_height() / 2),
+    #             image=self.current_image, anchor='center')
+    #
+    #         if self.current_index + 1 >= self.images_len:
+    #             self.current_index = 0
+    #         else:
+    #             self.current_index += 1
+    #         self.image_test = self.image_list[self.current_index]
+    #         self.current_image2 = self.resizing(self.side_count.get())
+    #         self.canvas_im2 = self.image_canvas_ss.create_image(
+    #             (self.image_canvas_ss.winfo_width() / 4 * 3, self.image_canvas_ss.winfo_height() / 2),
+    #             image=self.current_image2, anchor='center')
+    #
+    #     elif self.side_count.get() == 3:
+    #
+    #         if self.current_index + 1 >= self.images_len:
+    #             self.current_index = 0
+    #         else:
+    #             self.current_index += 1
+    #         self.image_test = self.image_list[self.current_index]
+    #         self.current_image = self.resizing(self.side_count.get())
+    #         self.canvas_im = self.image_canvas_ss.create_image(
+    #             (self.image_canvas_ss.winfo_width() / 6, self.image_canvas_ss.winfo_height() / 2),
+    #             image=self.current_image, anchor='center')
+    #
+    #         if self.current_index + 1 >= self.images_len:
+    #             self.current_index = 0
+    #         else:
+    #             self.current_index += 1
+    #         self.image_test = self.image_list[self.current_index]
+    #         self.current_image2 = self.resizing(self.side_count.get())
+    #         self.canvas_im2 = self.image_canvas_ss.create_image(
+    #             (self.image_canvas_ss.winfo_width() / 2, self.image_canvas_ss.winfo_height() / 2),
+    #             image=self.current_image2, anchor='center')
+    #
+    #         if self.current_index + 1 >= self.images_len:
+    #             self.current_index = 0
+    #         else:
+    #             self.current_index += 1
+    #         self.image_test = self.image_list[self.current_index]
+    #         self.current_image3 = self.resizing(self.side_count.get())
+    #         self.canvas_im3 = self.image_canvas_ss.create_image(
+    #             (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
+    #             image=self.current_image3, anchor='center')
+    #
+    #         self.update_label(1)
+    def prev_image_slideshow(self, move_one=False):
         self.last_view_time = time.time()
 
         # if self.image_canvas_ss is not None:
         #     self.image_canvas_ss.delete('all')
 
         if self.side_count.get() == 1:
-            if self.current_index == 0:
-                self.current_index = self.images_len - 1
-            else:
-                self.current_index -= 1
+
+            self.current_index = self.get_next_img_index(-1)
+
             self.image_test = self.image_list[self.current_index]
             self.current_image = self.resizing(self.side_count.get())
             self.canvas_im1 = self.image_canvas_ss.create_image(
@@ -796,57 +960,49 @@ class Application(tk.Frame):
                 image=self.current_image, anchor='center')
 
         elif self.side_count.get() == 2:
-            if self.current_index == 2:
-                self.current_index = self.images_len - 1
+
+            if move_one:
+                self.current_index = self.get_next_img_index(-1)
             else:
-                self.current_index -= 3
-            self.image_test = self.image_list[self.current_index]
+                self.current_index = self.get_next_img_index(-2)
+            self.image_test = self.image_list[self.get_next_img_index(0)]
             self.current_image = self.resizing(self.side_count.get())
             self.canvas_im1 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 4, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image, anchor='center')
 
-            if self.current_index + 1 >= self.images_len:
-                self.current_index = 0
-            else:
-                self.current_index += 1
-            self.image_test = self.image_list[self.current_index]
+            self.image_test = self.image_list[self.get_next_img_index(1)]
             self.current_image2 = self.resizing(self.side_count.get())
             self.canvas_im2 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 4 * 3, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image2, anchor='center')
 
         elif self.side_count.get() == 3:
-            if self.current_index < 5:
-                self.current_index = (self.images_len - 1) + self.current_index - 4
+
+            if move_one:
+                self.current_index = self.get_next_img_index(-1)
             else:
-                self.current_index -= 5
-            self.image_test = self.image_list[self.current_index]
+                self.current_index = self.get_next_img_index(-3)
+
+            self.image_test = self.image_list[self.get_next_img_index(0)]
+
             self.current_image = self.resizing(self.side_count.get())
             self.canvas_im1 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 6, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image, anchor='center')
 
-            if self.current_index + 1 >= self.images_len:
-                self.current_index = 0
-            else:
-                self.current_index += 1
-            self.image_test = self.image_list[self.current_index]
+            self.image_test = self.image_list[self.get_next_img_index(1)]
             self.current_image2 = self.resizing(self.side_count.get())
             self.canvas_im2 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 2, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image2, anchor='center')
 
-            if self.current_index + 1 >= self.images_len:
-                self.current_index = 0
-            else:
-                self.current_index += 1
-            self.image_test = self.image_list[self.current_index]
+            self.image_test = self.image_list[self.get_next_img_index(2)]
             self.current_image3 = self.resizing(self.side_count.get())
             self.canvas_im3 = self.image_canvas_ss.create_image(
                 (self.image_canvas_ss.winfo_width() / 6 * 5, self.image_canvas_ss.winfo_height() / 2),
                 image=self.current_image3, anchor='center')
-            self.update_label(1)
+        self.update_label(1)
 
 
     def load_settings(self):
@@ -872,7 +1028,8 @@ class Application(tk.Frame):
                 'save_zoom' : self.save_zoom.get(),
                 'slide_show_time': self.slide_show_time.get(),
                 'side_count': self.side_count.get(),
-                'screen_dis': self.screen_dis.get()}
+                'screen_dis': self.screen_dis.get(),
+                'auto_sort' : self.auto_sort.get()}
         with open('Source/settings.txt', 'wb') as file:
             pickle.dump(data, file)
 
