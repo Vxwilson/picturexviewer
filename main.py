@@ -13,6 +13,7 @@ from functools import partial
 from PIL import Image, ImageTk, ExifTags, ImageOps
 import platform
 
+current_version = "PictureXViewer v0.2.6"
 current_os = platform.system()
 
 print(f"os: {current_os}")
@@ -1067,7 +1068,7 @@ if current_os == "Windows":
     # print(root.winfo_screenwidth())
     root.geometry(f"{w}x{h}+{int(sw / 2 - w / 2)}+{int(sh / 2 - h / 2)}")
     root.minsize(400, 200)
-    root.title("PictureXViewer v0.2.0a")
+    root.title(current_version)
     # root.iconphoto(False, tk.PhotoImage(file='Source/Icon/gradient_less_saturated.png'))
     root.iconbitmap('Source/Icon/picturexviewer.ico')
     root.tk.call('source', 'Source/Style/azure.tcl')
@@ -1090,7 +1091,7 @@ else:
     root.minsize(400, 200)
 
     # Set window title
-    root.title("PictureXViewer v0.2.0a")
+    root.title(current_version)
 
     # Set window icon (only works with .ico files on Windows)
     # For macOS, you can use .png files or other formats
