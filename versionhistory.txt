@@ -1,0 +1,17 @@
+v0.2.1
+- fixed monitor positioning issue - now slideshows always work on the correct monitors
+
+v0.2.2
+- upsized images when in 3 images slideshow mode (todo scroll to zoom)
+- auto sort images from selection; option to enable/disable
+
+v0.2.3.2
+- mouse controls for slideshow, opening images, and in slideshow mode
+
+v0.2.5
+- added paused indicator in slideshow mode
+- added feature to move +1/-1 image in slideshow mode, instead of just going to next/previous
+- (todo) fix slideshow mode first image not showing up
+
+v0.2.6
+- added support for webp images
