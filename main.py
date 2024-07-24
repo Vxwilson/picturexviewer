@@ -37,7 +37,16 @@ class Application(tk.Frame):
             # user32 = ctypes.windll.user32
             self.screen_one_size = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
             self.screen_two_size = user32.GetSystemMetrics(78) - user32.GetSystemMetrics(0), user32.GetSystemMetrics(79)
-            self.screen_count = 1 if self.screen_two_size[0] == 0 else 2
+            # self.screen_count = 1 if self.screen_two_size[0] == 0 else 2
+
+            # get screen count
+            print('n: ', user32.GetSystemMetrics(80))
+            self.screen_count = user32.GetSystemMetrics(80)
+
+            # if 76 is a negative value, the secondary screen is on the left side of the primary screen
+            # if 76 is 0, the secondary screen is on the right side of the primary screen
+            # print('x, y of virtual: ', user32.GetSystemMetrics(76), user32.GetSystemMetrics(77))
+            self.secondary_on_left = True if user32.GetSystemMetrics(76) < 0 else False
         else: # mac
             # attempt to get screen count (number of displays)
             self.screen_count = len(get_monitors())
