@@ -7,18 +7,12 @@ import tkinter.ttk as ttk
 import pickle
 import time
 from functools import partial
+from screeninfo import get_monitors
 
 from PIL import Image, ImageTk, ExifTags, ImageOps
 import platform
 
-current_version = "PictureXViewer v0.2.6"
-current_os = platform.system()
 
-print(f"os: {current_os}")
-if current_os == "Windows":
-    pass
-elif current_os == "Darwin":
-    from screeninfo import get_monitors
 
 
 class Application(tk.Frame):
@@ -26,7 +20,7 @@ class Application(tk.Frame):
     def __init__(self, master=None, scale: float = 1.0):
         super().__init__(master)
 
-        
+        self.master = master
 
         if current_os == "Windows":
             # get screen information
@@ -118,14 +112,14 @@ class Application(tk.Frame):
 
         self.image_canvas_ss = None
 
-        self.menubar = tk.Menu(root)
+        self.menubar = tk.Menu(self.master)
         self.filemenu = tk.Menu(self.menubar, tearoff=0)
         self.filemenu.add_command(label="Read from file", command=self.select_images, accelerator="Ctrl+O")
         # self.filemenu.add_command(label="Save credentials", command=self.save_data, accelerator="Ctrl+S")
         self.filemenu.add_separator()
         self.filemenu.add_command(label="Preferences", command=self.open_settings_, accelerator="Alt+P")
         self.filemenu.add_separator()
-        self.filemenu.add_command(label="Exit", command=root.quit, accelerator="Alt+X")
+        self.filemenu.add_command(label="Exit", command=self.master.quit, accelerator="Alt+X")
         self.menubar.add_cascade(label="File", menu=self.filemenu)
 
         self.actionmenu = tk.Menu(self.menubar, tearoff=0)
@@ -138,7 +132,7 @@ class Application(tk.Frame):
         self.helpmenu = tk.Menu(self.menubar, tearoff=0)
         self.helpmenu.add_command(label="About", command=lambda: self.open_help_window())
         self.menubar.add_cascade(label="Help", menu=self.helpmenu)
-        root.config(menu=self.menubar)
+        self.master.config(menu=self.menubar)
 
         # menu popup
         self.popup = tk.Menu(tearoff=0)
@@ -154,7 +148,7 @@ class Application(tk.Frame):
         self.imscale = 1.0
         self.delta = 0.85
 
-        root.update()
+        self.master.update()
         self.canvas_im = self.image_canvas.create_image(
             (self.image_canvas.winfo_width() / 2, self.image_canvas.winfo_height() / 2),
             image=self.current_image, anchor='center')
@@ -200,18 +194,18 @@ class Application(tk.Frame):
     # image = None
 
     # def toggle_fullscreen(self, event=None):
-    #     root.state = not root.state  # Just toggling the boolean
-    #     root.tk.attributes("-fullscreen", root.state)
-    #     # root.state('zoomed', True)
+    #     self.master.state = not self.master.state  # Just toggling the boolean
+    #     self.master.tk.attributes("-fullscreen", self.master.state)
+    #     # self.master.state('zoomed', True)
     #     # print('zoomed')
     #     return "break"
 
     def open_settings_(self):
-        settings = tk.Toplevel(root)
+        settings = tk.Toplevel(self.master)
         settings.title("Settings")
-        # settings.geometry(f"{600}x{450}+{int(root.winfo_width()/2)}+{int(root.winfo_height()/2)}")
+        # settings.geometry(f"{600}x{450}+{int(self.master.winfo_width()/2)}+{int(self.master.winfo_height()/2)}")
         settings.minsize(300, 85)
-        settings.geometry(f"+{int(root.winfo_width() / 2)}+{int(root.winfo_height() / 2)}")
+        settings.geometry(f"+{int(self.master.winfo_width() / 2)}+{int(self.master.winfo_height() / 2)}")
         settings.focus_set()
 
         show_image_name = ttk.Checkbutton(master=settings, text="Show image label", variable=self.show_label)
@@ -235,9 +229,9 @@ class Application(tk.Frame):
         settings.bind('<Escape>', lambda e: settings.destroy())
 
     def open_help_window(self):
-        help_window = tk.Toplevel(root)
+        help_window = tk.Toplevel(self.master)
         help_window.minsize(500, 200)
-        help_window.geometry(f"+{int(root.winfo_width() / 2)}+{int(root.winfo_height() / 2)}")
+        help_window.geometry(f"+{int(self.master.winfo_width() / 2)}+{int(self.master.winfo_height() / 2)}")
         help_window.title("About")
 
         self.help_label = ttk.Label(master=help_window, text="""
@@ -254,9 +248,9 @@ class Application(tk.Frame):
         if not self.image_list:  # nothing to slideshow
             return
 
-        slideshow_indicator = tk.Toplevel(root)
+        slideshow_indicator = tk.Toplevel(self.master)
         slideshow_indicator.minsize(400, 90)
-        slideshow_indicator.geometry(f"+{int(root.winfo_width() / 2)}+{int(root.winfo_height() / 2)}")
+        slideshow_indicator.geometry(f"+{int(self.master.winfo_width() / 2)}+{int(self.master.winfo_height() / 2)}")
         slideshow_indicator.title("Start Slideshow")
         slideshow_indicator.focus_set()
 
@@ -286,7 +280,7 @@ class Application(tk.Frame):
         slideshow_indicator.bind('<Escape>', lambda e: slideshow_indicator.destroy())
 
     def open_fs_slideshow(self):
-        fs_slideshow = tk.Toplevel(root)
+        fs_slideshow = tk.Toplevel(self.master)
         if self.screen_dis.get() == 1:
             print('is 1, ',f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+0+0")
             fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+0+0")
@@ -308,8 +302,8 @@ class Application(tk.Frame):
 
         fs_slideshow.title("Settings")
         # right click
-        fs_slideshow.bind("<Button-3>", lambda e: [fs_slideshow.destroy(), root.deiconify(), self.update_image()])
-        fs_slideshow.bind("<Escape>", lambda e: [fs_slideshow.destroy(), root.deiconify(), self.update_image()])
+        fs_slideshow.bind("<Button-3>", lambda e: [fs_slideshow.destroy(), self.master.deiconify(), self.update_image()])
+        fs_slideshow.bind("<Escape>", lambda e: [fs_slideshow.destroy(), self.master.deiconify(), self.update_image()])
         fs_slideshow.bind("<Left>", lambda e: self.prev_image_slideshow())
         fs_slideshow.bind("<Control-Left>", lambda e: self.prev_image_slideshow(move_one=True))
         fs_slideshow.bind("<Right>", lambda e: self.next_image_slideshow())
@@ -328,13 +322,13 @@ class Application(tk.Frame):
         else:
             fs_slideshow.attributes('-fullscreen', True)
         fs_slideshow.overrideredirect(1)
-        root.withdraw()
-        root.update()
+        self.master.withdraw()
+        self.master.update()
 
         self.image_canvas_ss = tk.Canvas(fs_slideshow, width=fs_slideshow.winfo_width(),
                                          height=fs_slideshow.winfo_height(), background='#3B3D3F')
         self.image_canvas_ss.pack(anchor='center', expand='yes')
-        root.update()
+        self.master.update()
 
         # if self.image_canvas_ss is not None:
         #     self.image_canvas_ss.delete('all')
@@ -421,10 +415,10 @@ class Application(tk.Frame):
         self.update_label(1)
 
     def show_exif(self):
-        exif_window = tk.Toplevel(root)
+        exif_window = tk.Toplevel(self.master)
         exif_window.title("EXIF")
         exif_window.minsize(250, 50)
-        exif_window.geometry(f"+{int(root.winfo_width() / 2)}+{int(root.winfo_height() / 2)}")
+        exif_window.geometry(f"+{int(self.master.winfo_width() / 2)}+{int(self.master.winfo_height() / 2)}")
         exif_window.focus_set()
         exif_window.resizable(False, False)
         # exif_window.overrideredirect(True)
@@ -490,45 +484,45 @@ class Application(tk.Frame):
         self.image_canvas.bind('<MouseWheel>', self.wheel)  # TODO add control-mousewheel to navigate images
 
         # shortcuts
-        root.bind("<Button-3>", self.menu_popup)
+        self.master.bind("<Button-3>", self.menu_popup)
 
 
-        root.bind('<Control-o>', lambda e: self.select_images())
-        root.bind('<o>', lambda e: self.select_images())
-        root.bind('<Control-s>', lambda e: self.save_data())
+        self.master.bind('<Control-o>', lambda e: self.select_images())
+        self.master.bind('<o>', lambda e: self.select_images())
+        self.master.bind('<Control-s>', lambda e: self.save_data())
         # mouse left click
-        root.bind('<Button-1>', lambda e: self.handle_click())
+        self.master.bind('<Button-1>', lambda e: self.handle_click())
         # mouse middle click
-        root.bind('<Button-2>', lambda e: self.select_images())
+        self.master.bind('<Button-2>', lambda e: self.select_images())
         # right click
-        root.bind('<Button-3>', lambda e: self.open_slideshow_initiator())
+        self.master.bind('<Button-3>', lambda e: self.open_slideshow_initiator())
 
 
         #popup menu
-        root.bind('<Control-e>', lambda e: self.show_exif())
+        self.master.bind('<Control-e>', lambda e: self.show_exif())
 
-        root.bind('<Alt-p>', lambda e: self.open_settings_())
-        root.bind('<Alt-x>', lambda e: root.quit())
+        self.master.bind('<Alt-p>', lambda e: self.open_settings_())
+        self.master.bind('<Alt-x>', lambda e: self.master.quit())
 
-        root.bind('<Left>', lambda e: self.prev_image())
-        root.bind('<Right>', lambda e: self.next_image())
+        self.master.bind('<Left>', lambda e: self.prev_image())
+        self.master.bind('<Right>', lambda e: self.next_image())
 
-        root.bind('<s>', lambda e: self.open_slideshow_initiator())
-        root.bind('<Control-s>', lambda e: self.toggle_sort())
+        self.master.bind('<s>', lambda e: self.open_slideshow_initiator())
+        self.master.bind('<Control-s>', lambda e: self.toggle_sort())
 
         # auto resize image
-        root.bind('<Configure>', self.check_image_resize)
+        self.master.bind('<Configure>', self.check_image_resize)
 
     def check_image_resize(self, event):
         # print(event.width)   # unreliable as final width is not correct
         if self.resizer is not None:
-            root.after_cancel(self.resizer)
-        self.resizer = root.after(400, self.update_image)
+            self.master.after_cancel(self.resizer)
+        self.resizer = self.master.after(400, self.update_image)
 
 
     def menu_popup(self, event):
         try:
-            self.popup.tk_popup(event.x_root, event.y_root, 0)
+            self.popup.tk_popup(event.x_self.master, event.y_self.master, 0)
         finally:
             self.popup.grab_release()
 
@@ -606,7 +600,7 @@ class Application(tk.Frame):
 
 
     def resizing(self, mode=0, event=None):
-        # self.image_canvas.configure(width=root.winfo_height() * 0.9 * 9 / 16, height=root.winfo_height() * 0.9)
+        # self.image_canvas.configure(width=self.master.winfo_height() * 0.9 * 9 / 16, height=self.master.winfo_height() * 0.9)
         if self.image_test:  # true in most times
             # print(f"width, height: {self.image_test.width}, {self.image_test.height}")
             iw, ih = self.image_test.width, self.image_test.height
@@ -644,7 +638,7 @@ class Application(tk.Frame):
 
     # # select directory
     # def select_dir(self):
-    #     file = tdialog.askdirectory(parent=root, initialdir='/', title='Select a directory')
+    #     file = tdialog.askdirectory(parent=self.master, initialdir='/', title='Select a directory')
     #     print("You chose %s" % file)
     #     self.read_images("%s" % file)
 
@@ -654,7 +648,7 @@ class Application(tk.Frame):
         # self.foldernames = tdialog.askdirectory(title='Select a directory')
         # print("You chose %s" % self.foldernames)
 
-        self.filenames = tdialog.askopenfilenames(parent=root, filetypes=(
+        self.filenames = tdialog.askopenfilenames(parent=self.master, filetypes=(
         ("image files", "*.jpg *.png *.jpeg *.webp"), ('All files', '*.*')),
                                                  title='Select images')
         self.filenames = list(self.filenames)
@@ -765,9 +759,9 @@ class Application(tk.Frame):
     def set_timer(self):
         if self.paused is False:
             # print("not paused")
-            self.timer_id = root.after(300, self.update_clock)
+            self.timer_id = self.master.after(300, self.update_clock)
         else:
-            # root.after_cancel(self.timer_id)
+            # self.master.after_cancel(self.timer_id)
             # print("paused")
             print("")
 
@@ -1101,64 +1095,77 @@ class Application(tk.Frame):
         with open('Source/save.txt', 'wb') as file:
             pickle.dump(data, file)
 
-if current_os == "Windows":
-    root = tk.Tk()
-    # ttk.Style().configure("TButton", padding=6, relief="flat", foreground="#E8E8E8", background="#292929")
-    default_font = tkinter.font.nametofont("TkDefaultFont")
-    default_font.configure(size=11)
-    ctypes.windll.shcore.SetProcessDpiAwareness(1)  # to fix blurry text
-    user32 = ctypes.windll.user32
-    sw, sh = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
-    w, h = 1450, 950
-    # print(root.winfo_screenwidth())
-    root.geometry(f"{w}x{h}+{int(sw / 2 - w / 2)}+{int(sh / 2 - h / 2)}")
-    root.minsize(400, 200)
-    root.title(current_version)
-    # root.iconphoto(False, tk.PhotoImage(file='Source/Icon/gradient_less_saturated.png'))
-    root.iconbitmap('Source/Icon/picturexviewer.ico')
-    root.tk.call('source', 'Source/Style/azure.tcl')
-    root.tk.call("set_theme", "dark")
-    app = Application(master=root)
-    app.mainloop()
-else:
-    root = tk.Tk()
 
-    # Configure default font size
-    default_font = tk.font.nametofont("TkDefaultFont")
-    default_font.configure(size=11)
+current_version = "PictureXViewer v0.2.6"
+current_os = platform.system()
 
-    # Get screen width and height for positioning the window in the center
-    sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
-    w, h = 1450, 950
-    root.geometry(f"{w}x{h}+{int(sw / 2 - w / 2)}+{int(sh / 2 - h / 2)}")
+if __name__ == '__main__':
 
-    # Set minimum window size
-    root.minsize(400, 200)
+    print(f"os: {current_os}")
+    if current_os == "Windows":
+        pass
+    elif current_os == "Darwin":
+        from screeninfo import get_monitors
 
-    # Set window title
-    root.title(current_version)
 
-    # Set window icon (only works with .ico files on Windows)
-    # For macOS, you can use .png files or other formats
-    # icon_path = 'Source/Icon/picturexviewer.ico'
-    # root.iconphoto(False, tk.PhotoImage(file=icon_path))
+    if current_os == "Windows":
+        root = tk.Tk()
+        # ttk.Style().configure("TButton", padding=6, relief="flat", foreground="#E8E8E8", background="#292929")
+        default_font = tkinter.font.nametofont("TkDefaultFont")
+        default_font.configure(size=11)
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)  # to fix blurry text
+        user32 = ctypes.windll.user32
+        sw, sh = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+        w, h = 1450, 950
+        # print(root.winfo_screenwidth())
+        root.geometry(f"{w}x{h}+{int(sw / 2 - w / 2)}+{int(sh / 2 - h / 2)}")
+        root.minsize(400, 200)
+        root.title(current_version)
+        # root.iconphoto(False, tk.PhotoImage(file='Source/Icon/gradient_less_saturated.png'))
+        root.iconbitmap('Source/Icon/picturexviewer.ico')
+        root.tk.call('source', 'Source/Style/azure.tcl')
+        root.tk.call("set_theme", "dark")
+        app = Application(master=root)
+        app.mainloop()
+    else:
+        root = tk.Tk()
 
-    # Load and apply the theme (assuming you have the Azure theme in 'Source/Style/')
-    # root.tk.call('source', 'Source/Style/azure.tcl')
-    # root.tk.call("set_theme", "dark")
+        # Configure default font size
+        default_font = tk.font.nametofont("TkDefaultFont")
+        default_font.configure(size=11)
 
-    # # Define your Application class here
-    # class Application(tk.Frame):
-    #     def __init__(self, master=None):
-    #         super().__init__(master)
-    #         self.master = master
-    #         self.pack()
-    #         self.create_widgets()
+        # Get screen width and height for positioning the window in the center
+        sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
+        w, h = 1450, 950
+        root.geometry(f"{w}x{h}+{int(sw / 2 - w / 2)}+{int(sh / 2 - h / 2)}")
 
-    #     def create_widgets(self):
-    #         # Your widget creation code here
-    #         pass
+        # Set minimum window size
+        root.minsize(400, 200)
 
-    # Initialize and run the application
-    app = Application(master=root)
-    app.mainloop()
+        # Set window title
+        root.title(current_version)
+
+        # Set window icon (only works with .ico files on Windows)
+        # For macOS, you can use .png files or other formats
+        # icon_path = 'Source/Icon/picturexviewer.ico'
+        # root.iconphoto(False, tk.PhotoImage(file=icon_path))
+
+        # Load and apply the theme (assuming you have the Azure theme in 'Source/Style/')
+        # root.tk.call('source', 'Source/Style/azure.tcl')
+        # root.tk.call("set_theme", "dark")
+
+        # # Define your Application class here
+        # class Application(tk.Frame):
+        #     def __init__(self, master=None):
+        #         super().__init__(master)
+        #         self.master = master
+        #         self.pack()
+        #         self.create_widgets()
+
+        #     def create_widgets(self):
+        #         # Your widget creation code here
+        #         pass
+
+        # Initialize and run the application
+        app = Application(master=root)
+        app.mainloop()
