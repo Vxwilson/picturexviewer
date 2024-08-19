@@ -1,3 +1,6 @@
 pyinstaller --onefile --icon=dist/Source/Icon/picturexviewer.ico --name=PictureXViewer_v_0.2.7 -w main.py
 
+!important! for MacOs build, use Source/Icon/picturexviewer.ico
+
+
 run the above command, changing version name

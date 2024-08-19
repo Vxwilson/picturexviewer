@@ -295,11 +295,15 @@ class Application(tk.Frame):
         elif self.screen_dis.get() == 2:
             print('is 2 ', f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+{-self.screen_two_size[0]}+0")
 
-            # check if screen 2 is on the left or right
-            if self.secondary_on_left:
-                fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+{-self.screen_two_size[0]}+0")
+            if current_os == "Windows":
+                # check if screen 2 is on the left or right
+                if self.secondary_on_left:
+                    fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+{-self.screen_two_size[0]}+0")
+                else:
+                    fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+{self.screen_one_size[0]}+0")
             else:
-                fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+{self.screen_one_size[0]}+0")
+                # check if screen 2 is on the left or right
+                fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+{-self.screen_two_size[0]}+0")
 
         elif self.screen_dis.get() == 3:
             fs_slideshow.geometry(f"{self.screen_one_size[0]}x{self.screen_one_size[1]}+{self.screen_one_size[0]}+0")
@@ -316,6 +320,10 @@ class Application(tk.Frame):
         # left click
         fs_slideshow.bind("<Button-1>", lambda e: self.toggle_pause_slideshow())
         fs_slideshow.bind("<Control-MouseWheel>", self.slideshow_wheel)
+
+         # Bind Up and Down arrow keys for timer adjustment
+        fs_slideshow.bind("<Up>", lambda e: self.adjust_slideshow_time(1))
+        fs_slideshow.bind("<Down>", lambda e: self.adjust_slideshow_time(-1))
 
         if platform.system() == "Windows":
             fs_slideshow.state('zoomed')
@@ -470,6 +478,16 @@ class Application(tk.Frame):
 
         exif_window.bind('<Escape>', lambda e: exif_window.destroy())
 
+    def adjust_slideshow_time(self, increment):
+        """Increases or decreases the slideshow time by the given increment."""
+        current_time = self.slide_show_time.get()
+        new_time = current_time + increment
+        # Ensure the time doesn't go below 1 second
+        if new_time > 0:
+            self.slide_show_time.set(new_time)
+
+        # update the paused label
+
     def bind_keys(self):
         self.image_canvas.bind('<MouseWheel>', self.wheel)  # TODO add control-mousewheel to navigate images
 
@@ -481,7 +499,7 @@ class Application(tk.Frame):
         root.bind('<o>', lambda e: self.select_images())
         root.bind('<Control-s>', lambda e: self.save_data())
         # mouse left click
-        root.bind('<Button-1>', lambda e: self.next_image())
+        root.bind('<Button-1>', lambda e: self.handle_click())
         # mouse middle click
         root.bind('<Button-2>', lambda e: self.select_images())
         # right click
@@ -523,6 +541,10 @@ class Application(tk.Frame):
         elif event.delta < 0:
             self.next_image_slideshow(move_one)
 
+    def handle_click(self, event=None):
+        # do not let event propagate to the canvas to have duplicate events
+        # if event.widget not in [self.prev_button, self.next_button, self.zoom_label, self.resize_button]:
+        self.next_image()
 
     def wheel(self, event):  # TODO: zoom origin based on pointer
         print(event.x, event.y)
@@ -752,10 +774,26 @@ class Application(tk.Frame):
             print("")
 
     def update_clock(self):
-        if time.time() - self.last_view_time > self.slide_show_time.get() \
-                and not self.paused:
-            self.next_image_slideshow()
-            self.last_view_time = time.time()
+        # if time.time() - self.last_view_time > self.slide_show_time.get() \
+        #         and not self.paused:
+        #     self.next_image_slideshow()
+        #     self.last_view_time = time.time()
+        # self.set_timer()
+        if not self.paused:
+            # Calculate remaining time
+            remaining_time = self.slide_show_time.get() - (time.time() - self.last_view_time)
+
+            # Update the pause label with remaining time in seconds
+            text=f"{int(remaining_time)}s ({self.slide_show_time.get()})"
+            self.paused_label.set(text) 
+
+            if remaining_time <= 0:
+                self.next_image_slideshow()
+                self.last_view_time = time.time() 
+        else:
+            # If paused, show a paused message
+            self.paused_label.set("Paused")
+
         self.set_timer()
 
     def start_slideshow(self, img_count=1):
@@ -1108,8 +1146,8 @@ else:
     # root.iconphoto(False, tk.PhotoImage(file=icon_path))
 
     # Load and apply the theme (assuming you have the Azure theme in 'Source/Style/')
-    root.tk.call('source', 'Source/Style/azure.tcl')
-    root.tk.call("set_theme", "dark")
+    # root.tk.call('source', 'Source/Style/azure.tcl')
+    # root.tk.call("set_theme", "dark")
 
     # # Define your Application class here
     # class Application(tk.Frame):
