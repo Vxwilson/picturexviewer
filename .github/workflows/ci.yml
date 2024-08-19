@@ -10,7 +10,7 @@ on:
     branches: [ "master" ]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -19,6 +19,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Fetch full history for tag analysis
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
@@ -45,6 +47,62 @@ jobs:
     - name: Test with pytest
       run: |
         xvfb-run -a pytest  # Run pytest with xvfb
+
+    # # --- Automated Version Bumping ---
+    # - name: Get previous tag
+    #   id: get_previous_tag
+    #   uses: "WyriHaxus/github-action-get-previous-tag@v1"
+    #   with: 
+    #     fallback: '0.0.0'
+
+    # - name: Determine version bump
+    #   id: determine_bump
+    #   run: |
+    #     # Use a script (e.g., bumpversion.sh - see below) to analyze commits
+    #     # and determine if it's a MAJOR, MINOR, or PATCH bump
+    #     BUMP_TYPE=$(./bumpversion.sh) 
+    #     echo "BUMP_TYPE=${BUMP_TYPE}" >> $GITHUB_OUTPUT
+
+    # - name: Bump version and build
+    #   run: |
+    #     # Use a tool like bump2version or your script to:
+    #     # 1. Update the version in your chosen file (version.txt or package manifest)
+    #     # 2. Build your application (if necessary)
+    #     bump2version --allow-dirty --new-version="${{ steps.get_previous_tag.outputs.tag }}+${{ github.run_number }}" patch ./setup.py
+    #     python setup.py sdist bdist_wheel
+
+    # - name: Upload artifacts (optional)
+    #   uses: actions/upload-artifact@v3
+    #   with:
+    #     name: your-tkinter-app
+    #     path: dist/ 
+
+    # # --- Tagging and Pushing ---
+    # - name: Create Tag
+    #   if: ${{ github.ref == 'refs/heads/master' }} 
+    #   uses: actions/github-script@v6
+    #   with:
+    #     script: |
+    #       const { BumpType } = require('@actions/bump-type');
+    #       const bumpType = BumpType.forCommits(github.event.commits);
+    #       const newTag = `v${process.env.NEW_VERSION}`; 
+    #       github.rest.git.createRef({
+    #         ...context.repo,
+    #         ref: `refs/tags/${newTag}`,
+    #         sha: context.sha,
+    #       });
+    # - name: Push changes
+    #   if: ${{ github.ref == 'refs/heads/master' }} 
+    #   uses: ad-m/github-push-action@master
+    #   with:
+    #     github_token: ${{ secrets.GITHUB_TOKEN }}
+    #     branch: ${{ github.ref }}
+
+    - name: Add version info to json file
+      env:
+        Version: ${{ github.run_id }}.${{ github.run_number }}.${{ github.run_attempt }}
+      run: |
+        echo "{\"version\": \"$Version\"}" > /assets/version.json
     - name: Package application (example with PyInstaller)
       run: pyinstaller --onefile --icon=dist/Source/Icon/picturexviewer.ico --name=PictureXViewer_v_0.2.7 -w main.py
 
