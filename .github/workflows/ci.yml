@@ -102,7 +102,7 @@ jobs:
       env:
         Version: ${{ github.run_id }}.${{ github.run_number }}.${{ github.run_attempt }}
       run: |
-        echo "{\"version\": \"$Version\"}" > /assets/version.json
+        echo "{\"version\": \"$Version\"}" > /version.json
     - name: Package application (example with PyInstaller)
       run: pyinstaller --onefile --icon=dist/Source/Icon/picturexviewer.ico --name=PictureXViewer_v_0.2.7 -w main.py
 
