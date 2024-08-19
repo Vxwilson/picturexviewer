@@ -1,6 +1,7 @@
 import ctypes
 import os
 import tkinter as tk
+import tkinter.font
 import tkinter.filedialog as tdialog
 import tkinter.ttk as ttk
 import pickle
@@ -1103,7 +1104,7 @@ class Application(tk.Frame):
 if current_os == "Windows":
     root = tk.Tk()
     # ttk.Style().configure("TButton", padding=6, relief="flat", foreground="#E8E8E8", background="#292929")
-    default_font = tk.font.nametofont("TkDefaultFont")
+    default_font = tkinter.font.nametofont("TkDefaultFont")
     default_font.configure(size=11)
     ctypes.windll.shcore.SetProcessDpiAwareness(1)  # to fix blurry text
     user32 = ctypes.windll.user32
