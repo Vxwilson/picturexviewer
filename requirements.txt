@@ -1,4 +1,3 @@
 Pillow
 screeninfo  # If you're supporting macOS for multi-monitor setups 
 pytest 
-pickle
