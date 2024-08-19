@@ -1,12 +1,9 @@
 import ctypes
-import math
 import os
 import tkinter as tk
 import tkinter.filedialog as tdialog
 import tkinter.ttk as ttk
-import tkinter.font
 import pickle
-import glob
 import time
 from functools import partial
 
