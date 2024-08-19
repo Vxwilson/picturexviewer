@@ -48,12 +48,11 @@ class Application(tk.Frame):
             # get screen resolution for each screen
             if self.screen_count >= 1:
                 self.screen_one_size = get_monitors()[0].width, get_monitors()[0].height
+                print(f"screen one size: {self.screen_one_size}")
             
             if self.screen_count >= 2:
                 self.screen_two_size = get_monitors()[1].width, get_monitors()[1].height
-
-            print(f"screen one size: {self.screen_one_size}")
-            print(f"screen two size: {self.screen_two_size}")
+                print(f"screen two size: {self.screen_two_size}")
 
         # data
         self.data = self.load_data()
