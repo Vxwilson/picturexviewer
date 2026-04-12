@@ -162,3 +162,9 @@ cython_debug/
 
 # Mac OS
 .DS_Store
+# PictureXViewer Data
+data/
+open.command
+
+# Deprecated files
+deprecated/
