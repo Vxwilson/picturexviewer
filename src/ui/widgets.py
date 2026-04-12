@@ -2,8 +2,8 @@ import os
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, 
                              QFrame, QScrollArea)
-from PyQt6.QtGui import QPixmap, QIcon, QColor, QWheelEvent, QImageReader
-from PyQt6.QtCore import Qt, QTimer, QSize
+from PyQt6.QtGui import QPixmap, QIcon, QColor, QWheelEvent, QImageReader, QPainter, QBrush, QPen
+from PyQt6.QtCore import Qt, QTimer, QSize, QPropertyAnimation, QEasingCurve, pyqtProperty, QRect, QPoint
 from .styles import SCROLL_AREA_STYLE
 
 class QImageViewer(QGraphicsView):
@@ -117,7 +117,7 @@ class SideBySideWidget(QWidget):
         side_count = self.main.side_count
         for i in range(side_count):
             viewer = QImageViewer(self.main)
-            self.layout.addWidget(viewer)
+            self.layout.addWidget(viewer, stretch=1)
             self.viewers.append(viewer)
             
             if i < side_count - 1:
@@ -135,7 +135,8 @@ class SideBySideWidget(QWidget):
             idx = (self.main.current_index + i) % n
             pix = self.main.get_pixmap(idx)
             viewer.set_image(pix)
-            viewer.fit_image()
+            if not self.main.save_zoom:
+                viewer.fit_image()
 
 class InfiniteScrollWidget(QWidget):
     def __init__(self, main_window):
@@ -373,3 +374,87 @@ class RecentItemWidget(QWidget):
             self.name_lbl.setStyleSheet("color: #666; font-weight: bold;")
             self.path_lbl.setStyleSheet("color: #444; font-size: 10px;")
             self.setEnabled(False)
+
+class ToggleSwitch(QPushButton):
+    def __init__(self, parent=None, width=44, height=22):
+        super().__init__(parent)
+        self.setCheckable(True)
+        self.setFixedSize(width, height)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        self._thumb_pos = 2 if not self.isChecked() else self.width() - self.height() + 2
+        self._anim = QPropertyAnimation(self, b"thumb_pos")
+        self._anim.setDuration(200)
+        self._anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        
+    @pyqtProperty(int)
+    def thumb_pos(self):
+        return self._thumb_pos
+        
+    @thumb_pos.setter
+    def thumb_pos(self, pos):
+        self._thumb_pos = pos
+        self.update()
+        
+    def nextCheckState(self):
+        super().nextCheckState()
+        self._animate_thumb()
+        
+    def setChecked(self, checked):
+        super().setChecked(checked)
+        self._update_thumb_pos()
+
+    def _animate_thumb(self):
+        start = self._thumb_pos
+        end = self.width() - self.height() + 2 if self.isChecked() else 2
+        self._anim.setStartValue(start)
+        self._anim.setEndValue(end)
+        self._anim.start()
+        
+    def _update_thumb_pos(self):
+        self._thumb_pos = self.width() - self.height() + 2 if self.isChecked() else 2
+        self.update()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_thumb_pos()
+        
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        # Bg
+        brush_color = QColor("#3574F0") if self.isChecked() else QColor("#4F5258")
+        p.setBrush(brush_color)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.drawRoundedRect(self.rect(), self.height() // 2, self.height() // 2)
+        
+        # Thumb
+        p.setBrush(QColor("white"))
+        thumb_size = self.height() - 4
+        p.drawEllipse(self._thumb_pos, 2, thumb_size, thumb_size)
+
+class SettingRow(QWidget):
+    def __init__(self, label_text, control_widget, description=None, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 5, 0, 5)
+        layout.setSpacing(2)
+        
+        top_layout = QHBoxLayout()
+        self.label = QLabel(label_text)
+        self.label.setStyleSheet("font-size: 13px; font-weight: bold; color: #EEE;")
+        
+        top_layout.addWidget(self.label)
+        top_layout.addStretch()
+        top_layout.addWidget(control_widget)
+        
+        layout.addLayout(top_layout)
+        
+        if description:
+            self.desc_label = QLabel(description)
+            self.desc_label.setStyleSheet("font-size: 11px; color: #888;")
+            self.desc_label.setWordWrap(True)
+            layout.addWidget(self.desc_label)
+        
+        self.setFixedHeight(self.sizeHint().height())

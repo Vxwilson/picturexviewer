@@ -10,9 +10,9 @@ from PyQt6.QtCore import Qt, QTimer, QUrl
 from ..constants import ViewMode, CURRENT_VERSION, CURRENT_OS, DEFAULT_SLIDE_SHOW_TIME, DEFAULT_SIDE_COUNT, DEFAULT_SCREEN_DIS, MAX_RECENT_PATHS
 from .styles import (MAIN_WINDOW_STYLE, FOOTER_FRAME_STYLE, OVERLAY_LABEL_STYLE, 
                     ZEN_ZOOM_OVERLAY_STYLE, ZEN_ZOOM_ICON_STYLE, ZEN_SLIDER_STYLE, 
-                    ZEN_STATUS_OVERLAY_STYLE, CONTEXT_MENU_STYLE)
+                    ZEN_STATUS_OVERLAY_STYLE, ZEN_FS_ICON_STYLE, CONTEXT_MENU_STYLE)
 from .widgets import QImageViewer, SideBySideWidget, InfiniteScrollWidget
-from .dialogs import SettingsDialog, ExifDialog, SlideshowInitiator, RecentPathsDialog
+from .dialogs import SettingsDialog, ExifDialog, RecentPathsDialog
 from .slideshow_window import SlideshowWindow
 from ..core.logic_manager import LogicManager
 
@@ -57,6 +57,9 @@ class MainWindow(QMainWindow):
         self.side_count = self.settings_data.get("side_count", DEFAULT_SIDE_COUNT)
         self.screen_dis = self.settings_data.get("screen_dis", DEFAULT_SCREEN_DIS)
         self.view_mode = self.settings_data.get("view_mode", ViewMode.STANDARD)
+        self.max_recent_paths = self.settings_data.get("max_recent_paths", MAX_RECENT_PATHS)
+        self.thumb_size = self.settings_data.get("thumb_size", 100)
+        self.auto_fit_on_nav = self.settings_data.get("auto_fit_on_nav", True)
         
         self.save_data = self.logic_manager.load_data(self.reopen_images_bool)
         self.paths = self.logic_manager.load_paths()
@@ -136,19 +139,20 @@ class MainWindow(QMainWindow):
         self.btn_recents = QPushButton("🕒")
         self.btn_recents.setFixedWidth(40)
         self.btn_recents.clicked.connect(self.open_recents_dialog)
-        self.btn_recents.setToolTip("Recent Sessions")
+        self.btn_recents.setToolTip("Recent Sessions [R]")
         self.bottom_layout.addWidget(self.btn_recents)
 
         s_text = "Name" if self.auto_sort else "Default"
         self.btn_sort = QPushButton(f"⇅ {s_text}")
         self.btn_sort.clicked.connect(self.toggle_sort)
-        self.btn_sort.setToolTip("Toggle Sort Mode")
+        self.btn_sort.setToolTip("Toggle Sort Mode [Alt+S]")
         self.bottom_layout.addWidget(self.btn_sort)
         self.bottom_layout.addWidget(self.name_label)
         self.bottom_layout.addStretch()
         
         self.btn_prev = QPushButton("◀")
         self.btn_prev.setFixedWidth(40)
+        self.btn_prev.setToolTip("Previous [Left]")
         self.btn_prev.clicked.connect(self.prev_image)
         self.bottom_layout.addWidget(self.btn_prev)
         
@@ -159,6 +163,7 @@ class MainWindow(QMainWindow):
         
         self.btn_next = QPushButton("▶")
         self.btn_next.setFixedWidth(40)
+        self.btn_next.setToolTip("Next [Right]")
         self.btn_next.clicked.connect(self.next_image)
         self.bottom_layout.addWidget(self.btn_next)
         
@@ -190,7 +195,7 @@ class MainWindow(QMainWindow):
         self.zoom_overlay_icon = QPushButton("🔍")
         self.zoom_overlay_icon.setFlat(True)
         self.zoom_overlay_icon.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.zoom_overlay_icon.setToolTip("Reset Zoom to 100%")
+        self.zoom_overlay_icon.setToolTip("Reset Zoom to 100% [0]")
         self.zoom_overlay_icon.clicked.connect(self.reset_zoom)
         self.zoom_overlay_icon.setStyleSheet(ZEN_ZOOM_ICON_STYLE)
         self.zoom_overlay_layout.addWidget(self.zoom_overlay_icon)
@@ -206,6 +211,14 @@ class MainWindow(QMainWindow):
         self.zoom_lbl_ss = QLabel("100%")
         self.zoom_lbl_ss.setStyleSheet("color: #EEE; min-width: 45px; background: transparent; border: none; font-size: 12px; font-weight: bold;")
         self.zoom_overlay_layout.addWidget(self.zoom_lbl_ss)
+
+        self.btn_fs_toggle = QPushButton("⛶")
+        self.btn_fs_toggle.setToolTip("Toggle Fullscreen [F]")
+        self.btn_fs_toggle.clicked.connect(self.open_fs_slideshow)
+        self.btn_fs_toggle.setStyleSheet(ZEN_FS_ICON_STYLE)
+        self.btn_fs_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.zoom_overlay_layout.addWidget(self.btn_fs_toggle)
+
         self.zoom_overlay.hide()
         
         self.bottom_layout.addStretch()
@@ -222,14 +235,14 @@ class MainWindow(QMainWindow):
         
         self.btn_mode_sbs = QPushButton(f"⧉ {self.side_count}")
         self.btn_mode_sbs.setFixedWidth(50)
-        self.btn_mode_sbs.setToolTip("Side-by-Side [2] (Click again to toggle 3)")
+        self.btn_mode_sbs.setToolTip("Split View [2, 3, 4] (Cycle with 2)")
         self.btn_mode_sbs.clicked.connect(lambda: self.switch_mode(ViewMode.SIDE_BY_SIDE))
         self.btn_mode_sbs.setStyleSheet("border-radius: 0;")
         
         self.btn_mode_scroll = QPushButton("☰")
         self.btn_mode_scroll.setFixedWidth(40)
         self.btn_mode_scroll.setStyleSheet("border-top-left-radius: 0; border-bottom-left-radius: 0; border-top-right-radius: 12px; border-bottom-right-radius: 12px;")
-        self.btn_mode_scroll.setToolTip("Infinite Scroll [3]")
+        self.btn_mode_scroll.setToolTip("Infinite Scroll [5]")
         self.btn_mode_scroll.clicked.connect(lambda: self.switch_mode(ViewMode.INFINITE_SCROLL))
         
         self.mode_btn_group.addWidget(self.btn_mode_std)
@@ -237,18 +250,20 @@ class MainWindow(QMainWindow):
         self.mode_btn_group.addWidget(self.btn_mode_scroll)
         self.bottom_layout.addLayout(self.mode_btn_group)
         
-        self.bottom_layout.addStretch()
-        
-        self.btn_slideshow = QPushButton("📽 Full")
-        self.btn_slideshow.setToolTip("Fullscreen Slideshow [S]")
-        self.btn_slideshow.clicked.connect(self.open_slideshow_initiator)
-        self.bottom_layout.addWidget(self.btn_slideshow)
-
         self.btn_toggle_ss = QPushButton("▶")
-        self.btn_toggle_ss.setFixedWidth(35)
-        self.btn_toggle_ss.setToolTip("Start Internal Slideshow [Alt+Shift+S]")
+        self.btn_toggle_ss.setFixedWidth(40)
+        self.btn_toggle_ss.setToolTip("Zen Mode [S]")
         self.btn_toggle_ss.clicked.connect(self.toggle_internal_slideshow)
+        self.btn_toggle_ss.setStyleSheet("border-top-right-radius: 0; border-bottom-right-radius: 0; border-top-left-radius: 12px; border-bottom-left-radius: 12px;")
+
+        self.btn_settings = QPushButton("⚙")
+        self.btn_settings.setFixedWidth(40)
+        self.btn_settings.setToolTip("Preferences [Alt+P]")
+        self.btn_settings.clicked.connect(self.open_settings)
+        self.btn_settings.setStyleSheet("border-top-left-radius: 0; border-bottom-left-radius: 0; border-top-right-radius: 12px; border-bottom-right-radius: 12px;")
+        
         self.bottom_layout.addWidget(self.btn_toggle_ss)
+        self.bottom_layout.addWidget(self.btn_settings)
         
         self.main_layout.addWidget(self.bottom_frame)
         
@@ -294,9 +309,9 @@ class MainWindow(QMainWindow):
         self.addAction(self.prev_action)
         action_menu.addAction(self.prev_action)
         
-        ss_action = QAction("Start Slideshow", self)
+        ss_action = QAction("Zen Mode", self)
         ss_action.setShortcut("S")
-        ss_action.triggered.connect(self.open_slideshow_initiator)
+        ss_action.triggered.connect(self.toggle_internal_slideshow)
         action_menu.addAction(ss_action)
         
         help_menu = menubar.addMenu("Help")
@@ -314,10 +329,12 @@ class MainWindow(QMainWindow):
         sort_action.triggered.connect(self.toggle_sort)
         self.addAction(sort_action)
         
-        ss_toggle_action = QAction("Toggle Internal Slideshow", self)
-        ss_toggle_action.setShortcut("Alt+Shift+S")
-        ss_toggle_action.triggered.connect(self.toggle_internal_slideshow)
-        self.addAction(ss_toggle_action)
+        self.shortcut_recents = QAction(self)
+        self.shortcut_recents.setShortcuts(["R", "Ctrl+R"])
+        self.shortcut_recents.triggered.connect(self.open_recents_dialog)
+        self.addAction(self.shortcut_recents)
+        
+        self.addAction(ss_action)
         
         # J/L Shortcuts for 1x shift
         self.shortcut_j = QAction(self)
@@ -358,19 +375,40 @@ class MainWindow(QMainWindow):
         
         self.mode_2 = QAction(self)
         self.mode_2.setShortcut("2")
-        self.mode_2.triggered.connect(lambda: self.switch_mode(ViewMode.SIDE_BY_SIDE))
+        self.mode_2.triggered.connect(lambda: self.switch_mode(ViewMode.SIDE_BY_SIDE, 2))
         self.addAction(self.mode_2)
         
         self.mode_3 = QAction(self)
         self.mode_3.setShortcut("3")
-        self.mode_3.triggered.connect(lambda: self.switch_mode(ViewMode.INFINITE_SCROLL))
+        self.mode_3.triggered.connect(lambda: self.switch_mode(ViewMode.SIDE_BY_SIDE, 3))
         self.addAction(self.mode_3)
+        
+        self.mode_4 = QAction(self)
+        self.mode_4.setShortcut("4")
+        self.mode_4.triggered.connect(lambda: self.switch_mode(ViewMode.SIDE_BY_SIDE, 4))
+        self.addAction(self.mode_4)
+
+        self.mode_5 = QAction(self)
+        self.mode_5.setShortcut("5")
+        self.mode_5.triggered.connect(lambda: self.switch_mode(ViewMode.INFINITE_SCROLL))
+        self.addAction(self.mode_5)
         
         # Zoom Shortcut
         self.shortcut_zero = QAction(self)
         self.shortcut_zero.setShortcut("0")
         self.shortcut_zero.triggered.connect(self.reset_zoom)
         self.addAction(self.shortcut_zero)
+        
+        # Panel Count Shortcuts
+        self.shortcut_dec = QAction(self)
+        self.shortcut_dec.setShortcut("[")
+        self.shortcut_dec.triggered.connect(self.decrease_side_count)
+        self.addAction(self.shortcut_dec)
+        
+        self.shortcut_inc = QAction(self)
+        self.shortcut_inc.setShortcut("]")
+        self.shortcut_inc.triggered.connect(self.increase_side_count)
+        self.addAction(self.shortcut_inc)
         
     def timer_up(self):
         if self.internal_ss_active:
@@ -392,8 +430,8 @@ class MainWindow(QMainWindow):
         exif_action.triggered.connect(self.show_exif_dialog)
         context_menu.addAction(exif_action)
         
-        ss_action = QAction("Start Slideshow", self)
-        ss_action.triggered.connect(self.open_slideshow_initiator)
+        ss_action = QAction("Zen Mode", self)
+        ss_action.triggered.connect(self.toggle_internal_slideshow)
         context_menu.addAction(ss_action)
         context_menu.exec(pos)
         
@@ -446,7 +484,10 @@ class MainWindow(QMainWindow):
             'screen_dis': self.screen_dis,
             'auto_sort': self.auto_sort,
             'hide_missing_recent': self.hide_missing_recent,
-            'view_mode': int(self.view_mode)
+            'view_mode': int(self.view_mode),
+            'max_recent_paths': self.max_recent_paths,
+            'thumb_size': self.thumb_size,
+            'auto_fit_on_nav': self.auto_fit_on_nav
         }
         self.logic_manager.save_settings(data)
         self.save_data_now()
@@ -460,22 +501,31 @@ class MainWindow(QMainWindow):
             self.side_by_side_view.update_viewers()
             self.side_by_side_view.update_images()
 
-    def switch_mode(self, mode):
+    def switch_mode(self, mode, count=None):
         if self.view_mode == ViewMode.INFINITE_SCROLL and mode != ViewMode.INFINITE_SCROLL:
             self.infinite_scroll_view.calculate_current_index()
 
-        if mode == ViewMode.SIDE_BY_SIDE and self.view_mode == ViewMode.SIDE_BY_SIDE:
-            self.side_count = 3 if self.side_count == 2 else 2
+        if mode == ViewMode.SIDE_BY_SIDE:
+            if count is not None:
+                self.side_count = count
+            
             self.btn_mode_sbs.setText(f"⧉ {self.side_count}")
             self.side_by_side_view.update_viewers()
             self.side_by_side_view.update_images()
             QTimer.singleShot(50, self.reset_zoom)
+            self.view_mode = mode
+            self.stacked_widget.setCurrentIndex(int(mode))
             self.save_settings()
+            
+            is_scroll = False
+            self.btn_prev.setVisible(not is_scroll)
+            self.btn_next.setVisible(not is_scroll)
+            self.btn_reset_zoom.setVisible(not is_scroll)
+            self.update_image()
             return
 
         self.view_mode = mode
         self.stacked_widget.setCurrentIndex(int(mode))
-        self.btn_mode_sbs.setText(f"⧉ {self.side_count}")
         self.save_settings()
         
         is_scroll = (mode == ViewMode.INFINITE_SCROLL)
@@ -540,7 +590,7 @@ class MainWindow(QMainWindow):
             if not filenames: return
             new_paths = [p for p in self.paths if p.get('path') != filenames]
             new_paths.append({'path': filenames, 'timestamp': time.time()})
-            self.paths = sorted(new_paths, key=lambda x: x.get('timestamp', 0), reverse=True)[:MAX_RECENT_PATHS]
+            self.paths = sorted(new_paths, key=lambda x: x.get('timestamp', 0), reverse=True)[:self.max_recent_paths]
             self.logic_manager.save_paths(self.paths)
             self.update_recents_visibility()
 
@@ -550,7 +600,7 @@ class MainWindow(QMainWindow):
     def refresh_paths(self):
         self.recent_menu.clear()
         for i, entry in enumerate(self.paths):
-            if i == MAX_RECENT_PATHS: break
+            if i >= self.max_recent_paths: break
             path_list = entry.get('path', [])
             if not path_list: continue
             short_lbl = f"{i+1}: {str(path_list[0])[:100]}..."
@@ -611,7 +661,11 @@ class MainWindow(QMainWindow):
             pixmap = self.get_pixmap(self.current_index)
             if not pixmap.isNull():
                 self.image_viewer.set_image(pixmap)
-                if not self.save_zoom or not hasattr(self, '_zoomed_once'):
+                # If save_zoom is enabled, only fit the VERY first time an image is loaded, then persist.
+                # If auto_fit_on_nav is enabled, it overrides save_zoom for navigation.
+                should_fit = (self.auto_fit_on_nav and not self.save_zoom) or (not hasattr(self, '_zoomed_once'))
+                
+                if should_fit:
                     if self.image_viewer.width() > 10:
                         self.image_viewer.fit_image()
                         self._zoomed_once = True
@@ -656,7 +710,8 @@ class MainWindow(QMainWindow):
             shift = self.side_count if self.view_mode == ViewMode.SIDE_BY_SIDE else 1
         self.current_index = (self.current_index - shift) % self.images_len
         self.update_image()
-        self.reset_zoom()
+        if not self.save_zoom:
+            self.reset_zoom()
         
     def next_image(self, shift=None):
         if self.images_len == 0: return
@@ -670,7 +725,8 @@ class MainWindow(QMainWindow):
             shift = self.side_count if self.view_mode == ViewMode.SIDE_BY_SIDE else 1
         self.current_index = (self.current_index + shift) % self.images_len
         self.update_image()
-        self.reset_zoom()
+        if not self.save_zoom:
+            self.reset_zoom()
 
     def open_settings(self):
         dlg = SettingsDialog(self)
@@ -683,10 +739,6 @@ class MainWindow(QMainWindow):
         dlg = RecentPathsDialog(self)
         dlg.exec()
         
-    def open_slideshow_initiator(self):
-        if not self.filenames: return
-        dlg = SlideshowInitiator(self)
-        dlg.exec()
 
     def toggle_internal_slideshow(self):
         if not self.filenames: return
@@ -762,6 +814,9 @@ class MainWindow(QMainWindow):
                     self.save_settings()
                     self.update_ss_clock()
                 return
+            elif event.key() == Qt.Key.Key_F:
+                self.open_fs_slideshow()
+                return
             elif event.key() in (Qt.Key.Key_Left, Qt.Key.Key_J):
                 shift = 1 if (event.modifiers() & Qt.KeyboardModifier.ControlModifier or event.key() == Qt.Key.Key_J) else None
                 self.prev_image(shift)
@@ -772,7 +827,34 @@ class MainWindow(QMainWindow):
                 return
         super().keyPressEvent(event)
         
+    def increase_side_count(self):
+        if self.view_mode in (ViewMode.STANDARD, ViewMode.SIDE_BY_SIDE):
+            if self.side_count < 4:
+                self.side_count += 1
+                if self.side_count >= 2:
+                    self.switch_mode(ViewMode.SIDE_BY_SIDE, self.side_count)
+                else:
+                    self.switch_mode(ViewMode.STANDARD)
+
+    def decrease_side_count(self):
+        if self.view_mode in (ViewMode.STANDARD, ViewMode.SIDE_BY_SIDE):
+            if self.side_count > 1:
+                self.side_count -= 1
+                if self.side_count >= 2:
+                    self.switch_mode(ViewMode.SIDE_BY_SIDE, self.side_count)
+                else:
+                    self.switch_mode(ViewMode.STANDARD)
+
+    def apply_side_count_change(self):
+        self.btn_mode_sbs.setText(f"⧉ {self.side_count}")
+        self.side_by_side_view.update_viewers()
+        self.side_by_side_view.update_images()
+        QTimer.singleShot(50, self.reset_zoom)
+        self.save_settings()
+        
     def open_fs_slideshow(self):
         self._pre_slideshow_geometry = self.saveGeometry()
+        if self.internal_ss_active:
+            self.internal_ss_timer.stop()
         self.hide()
         self.ss_win = SlideshowWindow(self)

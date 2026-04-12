@@ -18,7 +18,7 @@ def get_version_from_history():
     return "v0.7.2"  # Fallback
 
 CURRENT_VERSION_RAW = get_version_from_history()
-CURRENT_VERSION = f"PictureXViewer {CURRENT_VERSION_RAW} (PyQt6)"
+CURRENT_VERSION = f"picturexviewer {CURRENT_VERSION_RAW}"
 CURRENT_OS = platform.system()
 
 class ViewMode(IntEnum):

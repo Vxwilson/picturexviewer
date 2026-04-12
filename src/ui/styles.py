@@ -61,6 +61,10 @@ ZEN_ZOOM_ICON_STYLE = """
     color: #AAA; background: transparent; border: none; font-size: 14px;
 """
 
+ZEN_FS_ICON_STYLE = """
+    color: #AAA; background: transparent; border: none; font-size: 18px; padding-left: 5px;
+"""
+
 ZEN_SLIDER_STYLE = """
     QSlider { background: transparent; border: none; }
     QSlider::groove:horizontal { background: #333; height: 4px; border-radius: 2px; }
@@ -119,7 +123,59 @@ SLIDESHOW_BG_STYLE = "background-color: #3B3D3F;"
 
 SCROLL_AREA_STYLE = "background-color: #1E1F22; border: none;"
 
+
 CONTEXT_MENU_STYLE = """
     QMenu { background-color: #2B2D30; color: #EEE; border: 1px solid #3F4344; } 
     QMenu::item:selected { background-color: #3574F0; }
+"""
+
+SETTINGS_DIALOG_STYLE = """
+    QDialog { background-color: #2B2D30; color: #EEE; }
+    QListWidget#settingsSidebar { 
+        background-color: #212224; 
+        border: none; 
+        border-right: 1px solid #3F4344;
+        outline: none;
+    }
+    QListWidget#settingsSidebar::item { 
+        padding: 12px; 
+        color: #888; 
+        font-weight: bold;
+    }
+    QListWidget#settingsSidebar::item:selected { 
+        background-color: #2B2D30; 
+        color: #3574F0; 
+        border-left: 3px solid #3574F0;
+    }
+    QListWidget#settingsSidebar::item:hover:!selected { 
+        background-color: #26282B; 
+        color: #BBB;
+    }
+    
+    QStackedWidget { background-color: #2B2D30; padding: 20px; }
+    QLabel { color: #EEE; }
+    
+    QSpinBox { 
+        background-color: #1E1F22; 
+        border: 1px solid #3F4344; 
+        border-radius: 4px; 
+        padding: 4px; 
+        color: #EEE; 
+        min-width: 60px;
+    }
+    QComboBox {
+        background-color: #1E1F22;
+        border: 1px solid #3F4344;
+        border-radius: 4px;
+        padding: 4px 8px;
+        color: #EEE;
+        min-width: 100px;
+    }
+    QComboBox::drop-down { border: none; }
+    QComboBox QAbstractItemView {
+        background-color: #1E1F22;
+        color: #EEE;
+        selection-background-color: #3574F0;
+        border: 1px solid #3F4344;
+    }
 """

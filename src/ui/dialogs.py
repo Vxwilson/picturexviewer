@@ -4,79 +4,168 @@ import pickle
 import time
 from functools import partial
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-                             QCheckBox, QFormLayout, QSpinBox, QListWidget, 
+                             QCheckBox, QFormLayout, QSpinBox, QListWidget, QComboBox, 
                              QListWidgetItem, QLineEdit, QScrollArea, QMenu, QMessageBox,
-                             QFrame, QWidget)
+                             QFrame, QWidget, QStackedWidget)
 from PyQt6.QtGui import QPixmap, QAction, QDesktopServices, QImageReader
 from PyQt6.QtCore import Qt, QTimer, QSize, QUrl
 
-from .widgets import RecentItemWidget
-from .styles import RECENTS_DIALOG_STYLE, CONTEXT_MENU_STYLE
+from .widgets import RecentItemWidget, ToggleSwitch, SettingRow
+from .styles import RECENTS_DIALOG_STYLE, CONTEXT_MENU_STYLE, SETTINGS_DIALOG_STYLE
 
 class SettingsDialog(QDialog):
     def __init__(self, main_window):
         super().__init__(main_window)
         self.main = main_window
-        self.setWindowTitle("Settings")
-        self.resize(600, 100)
+        self.setWindowTitle("Preferences")
+        self.resize(700, 500)
+        self.setStyleSheet(SETTINGS_DIALOG_STYLE)
         
-        layout = QVBoxLayout()
-        check_layout = QHBoxLayout()
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         
-        self.show_label_chk = QCheckBox("Show image label")
-        self.show_label_chk.setChecked(self.main.show_label)
-        check_layout.addWidget(self.show_label_chk)
+        # Sidebar
+        self.sidebar = QListWidget()
+        self.sidebar.setObjectName("settingsSidebar")
+        self.sidebar.setFixedWidth(180)
+        self.sidebar.addItems(["General", "Interface", "Viewer", "Slideshow", "History"])
+        self.sidebar.currentRowChanged.connect(self.display_page)
+        main_layout.addWidget(self.sidebar)
         
-        self.reopen_images_chk = QCheckBox("Reopen images upon launch")
-        self.reopen_images_chk.setChecked(self.main.reopen_images_bool)
-        check_layout.addWidget(self.reopen_images_chk)
+        # Content Area
+        self.pages = QStackedWidget()
+        main_layout.addWidget(self.pages)
         
-        self.save_paths_chk = QCheckBox("Save opened file path")
-        self.save_paths_chk.setChecked(self.main.save_paths)
+        self.init_pages()
+        self.sidebar.setCurrentRow(0)
         
-        self.info_lbl = QLabel("ℹ️")
-        self.info_lbl.setToolTip("When unchecked, the app will stop recording new history entries,\nbut existing history will still be preserved.")
-        self.info_lbl.setStyleSheet("color: #0078D7; font-weight: bold; cursor: help;")
+    def init_pages(self):
+        # Page 1: General
+        gen_page = QWidget()
+        gen_layout = QVBoxLayout(gen_page)
+        gen_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
-        save_layout = QHBoxLayout()
-        save_layout.addWidget(self.save_paths_chk)
-        save_layout.addWidget(self.info_lbl)
-        save_layout.addStretch()
-        check_layout.addLayout(save_layout)
+        self.reopen_images_tg = ToggleSwitch()
+        self.reopen_images_tg.setChecked(self.main.reopen_images_bool)
+        self.reopen_images_tg.toggled.connect(self.update_settings)
+        gen_layout.addWidget(SettingRow("Reopen Last Session", self.reopen_images_tg, "Automatically load images from your previous session on startup."))
         
-        self.save_zoom_chk = QCheckBox("Save zoom resolution")
-        self.save_zoom_chk.setChecked(self.main.save_zoom)
-        check_layout.addWidget(self.save_zoom_chk)
+        self.auto_sort_tg = ToggleSwitch()
+        self.auto_sort_tg.setChecked(self.main.auto_sort)
+        self.auto_sort_tg.toggled.connect(self.update_settings)
+        gen_layout.addWidget(SettingRow("Auto-sort Images", self.auto_sort_tg, "Automatically sort images by name when opening a folder."))
+        gen_layout.addStretch()
         
-        self.auto_sort_chk = QCheckBox("Sort images by name")
-        self.auto_sort_chk.setChecked(self.main.auto_sort)
-        check_layout.addWidget(self.auto_sort_chk)
+        self.pages.addWidget(gen_page)
         
-        layout.addLayout(check_layout)
+        # Page 2: Interface
+        int_page = QWidget()
+        int_layout = QVBoxLayout(int_page)
+        int_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
-        btn_layout = QHBoxLayout()
-        self.reset_btn = QPushButton("Reset History")
+        self.show_label_tg = ToggleSwitch()
+        self.show_label_tg.setChecked(self.main.show_label)
+        self.show_label_tg.toggled.connect(self.update_settings)
+        int_layout.addWidget(SettingRow("Show Image Label", self.show_label_tg, "Display the filename and index overlay at the bottom."))
+        int_layout.addStretch()
+        
+        self.pages.addWidget(int_page)
+        
+        # Page 3: Viewer
+        view_page = QWidget()
+        view_layout = QVBoxLayout(view_page)
+        view_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        
+        self.save_zoom_tg = ToggleSwitch()
+        self.save_zoom_tg.setChecked(self.main.save_zoom)
+        self.save_zoom_tg.toggled.connect(self.update_settings)
+        view_layout.addWidget(SettingRow("Persist Zoom", self.save_zoom_tg, "Maintain the current zoom level when switching between images."))
+        
+        self.auto_fit_tg = ToggleSwitch()
+        self.auto_fit_tg.setChecked(self.main.auto_fit_on_nav)
+        self.auto_fit_tg.toggled.connect(self.update_settings)
+        view_layout.addWidget(SettingRow("Auto-fit on Navigation", self.auto_fit_tg, "Automatically fit each new image to the window when navigating."))
+        view_layout.addStretch()
+        
+        self.pages.addWidget(view_page)
+        
+        # Page 4: Slideshow
+        ss_page = QWidget()
+        ss_layout = QVBoxLayout(ss_page)
+        ss_layout.setContentsMargins(40, 40, 40, 40)
+        ss_layout.setSpacing(15)
+        ss_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        
+        self.ss_time_box = QSpinBox()
+        self.ss_time_box.setRange(1, 120)
+        self.ss_time_box.setSuffix(" s")
+        self.ss_time_box.setValue(self.main.slide_show_time)
+        self.ss_time_box.valueChanged.connect(self.update_settings)
+        ss_layout.addWidget(SettingRow("Slideshow Interval", self.ss_time_box, "Duration for each image in seconds during slideshow."))
+        ss_layout.addStretch()
+        
+        self.pages.addWidget(ss_page)
+        
+        # Page 5: History
+        hist_page = QWidget()
+        hist_layout = QVBoxLayout(hist_page)
+        hist_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        
+        self.save_paths_tg = ToggleSwitch()
+        self.save_paths_tg.setChecked(self.main.save_paths)
+        self.save_paths_tg.toggled.connect(self.update_settings)
+        hist_layout.addWidget(SettingRow("Record History", self.save_paths_tg, "Save recently opened folders and files for quick access."))
+        
+        self.hide_missing_tg = ToggleSwitch()
+        self.hide_missing_tg.setChecked(self.main.hide_missing_recent)
+        self.hide_missing_tg.toggled.connect(self.update_settings)
+        hist_layout.addWidget(SettingRow("Hide Missing Paths", self.hide_missing_tg, "Automatically hide history items if the files have been moved or deleted."))
+        
+        self.max_paths_box = QSpinBox()
+        self.max_paths_box.setRange(1, 500)
+        self.max_paths_box.setValue(self.main.max_recent_paths)
+        self.max_paths_box.valueChanged.connect(self.update_settings)
+        hist_layout.addWidget(SettingRow("Max History Entries", self.max_paths_box, "Limit the number of recent sessions to store."))
+        
+        self.thumb_size_box = QSpinBox()
+        self.thumb_size_box.setRange(40, 300)
+        self.thumb_size_box.setSuffix(" px")
+        self.thumb_size_box.setValue(self.main.thumb_size)
+        self.thumb_size_box.valueChanged.connect(self.update_settings)
+        hist_layout.addWidget(SettingRow("Thumbnail Size", self.thumb_size_box, "Size of the preview thumbnails in the recent sessions gallery."))
+        
+        hist_layout.addSpacing(20)
+        self.reset_btn = QPushButton("Clear All History")
+        self.reset_btn.setStyleSheet("background-color: #442222; color: #EEE; padding: 8px; border-radius: 4px; font-weight: bold;")
         self.reset_btn.clicked.connect(self.reset_history)
-        btn_layout.addWidget(self.reset_btn)
+        hist_layout.addWidget(self.reset_btn)
+        hist_layout.addStretch()
         
-        self.apply_btn = QPushButton("Apply")
-        self.apply_btn.clicked.connect(self.apply_settings)
-        btn_layout.addWidget(self.apply_btn)
-        
-        layout.addLayout(btn_layout)
-        self.setLayout(layout)
+        self.pages.addWidget(hist_page)
+
+    def display_page(self, index):
+        self.pages.setCurrentIndex(index)
         
     def reset_history(self):
-        self.main.add_path(clear=True)
-        
-    def apply_settings(self):
-        self.main.show_label = self.show_label_chk.isChecked()
-        self.main.reopen_images_bool = self.reopen_images_chk.isChecked()
-        self.main.save_paths = self.save_paths_chk.isChecked()
-        self.main.save_zoom = self.save_zoom_chk.isChecked()
-        self.main.auto_sort = self.auto_sort_chk.isChecked()
+        ans = QMessageBox.question(self, "Clear History", "Are you sure you want to clear all history?", 
+                                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if ans == QMessageBox.StandardButton.Yes:
+            self.main.add_path(clear=True)
+            self.main.refresh_paths()
+
+    def update_settings(self):
+        self.main.show_label = self.show_label_tg.isChecked()
+        self.main.reopen_images_bool = self.reopen_images_tg.isChecked()
+        self.main.save_paths = self.save_paths_tg.isChecked()
+        self.main.save_zoom = self.save_zoom_tg.isChecked()
+        self.main.auto_sort = self.auto_sort_tg.isChecked()
+        self.main.hide_missing_recent = self.hide_missing_tg.isChecked()
+        self.main.slide_show_time = self.ss_time_box.value()
+        self.main.max_recent_paths = self.max_paths_box.value()
+        self.main.thumb_size = self.thumb_size_box.value()
+        self.main.auto_fit_on_nav = self.auto_fit_tg.isChecked()
         self.main.apply_settings()
-        self.accept()
 
 class ExifDialog(QDialog):
     def __init__(self, main_window):
@@ -132,66 +221,11 @@ class ExifDialog(QDialog):
         if 39321 in exif:
             self.misc_lbl.setText(str(exif[39321]))
 
-class SlideshowInitiator(QDialog):
-    def __init__(self, main_window):
-        super().__init__(main_window)
-        self.main = main_window
-        self.setWindowTitle("Start Slideshow")
-        self.resize(400, 90)
-        
-        layout = QHBoxLayout()
-        
-        layout.addWidget(QLabel("Timer (s):"))
-        self.timer_box = QSpinBox()
-        self.timer_box.setRange(1, 120)
-        self.timer_box.setValue(self.main.slide_show_time)
-        layout.addWidget(self.timer_box)
-        
-        layout.addWidget(QLabel("Side by side:"))
-        self.side_box = QSpinBox()
-        self.side_box.setRange(1, 3)
-        self.side_box.setValue(self.main.side_count)
-        layout.addWidget(self.side_box)
-        
-        screens = main_window.app_instance.screens() if hasattr(main_window, 'app_instance') else []
-        if len(screens) > 1:
-            layout.addWidget(QLabel("Display Monitor:"))
-            self.monitor_box = QSpinBox()
-            self.monitor_box.setRange(1, len(screens))
-            self.monitor_box.setValue(self.main.screen_dis)
-            layout.addWidget(self.monitor_box)
-        else:
-            self.monitor_box = None
-            
-        btn_start = QPushButton("Start")
-        btn_start.clicked.connect(self.start_slideshow)
-        layout.addWidget(btn_start)
-        
-        self.setLayout(layout)
-        
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
-            self.start_slideshow()
-        elif event.key() == Qt.Key.Key_Escape:
-            self.reject()
-        else:
-            super().keyPressEvent(event)
-            
-    def start_slideshow(self):
-        self.main.slide_show_time = self.timer_box.value()
-        self.main.side_count = self.side_box.value()
-        if self.monitor_box:
-            self.main.screen_dis = self.monitor_box.value()
-        self.main.save_settings()
-        
-        self.accept()
-        self.main.open_fs_slideshow()
-
 class RecentPathsDialog(QDialog):
     def __init__(self, main_window):
         super().__init__(main_window)
         self.main = main_window
-        self.thumb_size = 75 
+        self.thumb_size = self.main.thumb_size
         self.batch_size = 30
         self.loaded_count = 0
         self.current_path_list = []

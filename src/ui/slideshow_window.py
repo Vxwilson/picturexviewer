@@ -102,7 +102,10 @@ class SlideshowWindow(QMainWindow):
             idx = (self.main.current_index + i) % n
             pix = self.main.get_pixmap(idx)
             self.pixmap_items[i].setPixmap(pix)
-            self.views[i].fitInView(self.pixmap_items[i], Qt.AspectRatioMode.KeepAspectRatio)
+            if not self.main.save_zoom or not hasattr(self, '_zoomed_once'):
+                self.views[i].fitInView(self.pixmap_items[i], Qt.AspectRatioMode.KeepAspectRatio)
+                if i == side_count - 1:
+                    self._zoomed_once = True
             
         self.lbl_index.setText(f"{self.main.current_index + 1}/{n}")
         self.lbl_index.adjustSize()
@@ -139,6 +142,8 @@ class SlideshowWindow(QMainWindow):
             self.close()
         elif event.key() in (Qt.Key.Key_T, Qt.Key.Key_Space):
             self.toggle_pause()
+        elif event.key() == Qt.Key.Key_F:
+            self.close()
         elif event.key() == Qt.Key.Key_Left:
             if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
                 self.update_images(-1)
@@ -189,6 +194,9 @@ class SlideshowWindow(QMainWindow):
         if hasattr(self.main, '_pre_slideshow_geometry'):
             self.main.restoreGeometry(self.main._pre_slideshow_geometry)
         self.main.setWindowState(Qt.WindowState.WindowNoState)
+        if self.main.internal_ss_active:
+            self.main.last_ss_advance_time = time.time()
+            self.main.internal_ss_timer.start(500)
         QTimer.singleShot(100, self.main.update_image)
         self.main.raise_()
         self.main.activateWindow()

@@ -52,9 +52,9 @@ Users can import images into the viewer using several methods:
 
 ### Viewing Modes
 The application features three distinct viewing modes:
-1. **Standard View**: Displays a single image at a time. Supports high-performance panning and zooming.
-2. **Side-by-Side View**: Displays two or three images simultaneously. This mode is useful for comparison. Pressing the Side-by-Side button multiple times toggles between 2 and 3 columns.
-3. **Infinite Scroll**: Displays images in a vertical, scrollable batch feed. This mode uses lazy loading to maintain performance with large datasets.
+1. **Standard View**: Displays a single image at a time. Supports high-performance panning and zooming. Press `1` for instant access.
+2. **Side-by-Side View**: Displays between two and four images simultaneously. This mode is useful for comparison. Press `2`, `3`, or `4` to jump directly to the respective panel count.
+3. **Infinite Scroll**: Displays images in a vertical, scrollable batch feed. This mode uses lazy loading to maintain performance with large datasets. Press `5` for instant access.
 
 ### Recent Sessions
 The Recent Sessions dialog (`Ctrl + R` or the clock icon) allows users to:
@@ -73,15 +73,19 @@ The Recent Sessions dialog (`Ctrl + R` or the clock icon) allows users to:
 | Key | Action |
 | --- | --- |
 | `O` / `Ctrl+O` | Open file dialog |
-| `1` | Switch to Standard View |
-| `2` | Switch to Side-by-Side View |
-| `3` | Switch to Infinite Scroll View |
+| `R` / `Ctrl+R` | Open Recent Sessions |
+| `1` | Switch to Standard View (1 Panel) |
+| `2` | Switch to Side-by-Side (2 Panels) |
+| `3` | Switch to Side-by-Side (3 Panels) |
+| `4` | Switch to Side-by-Side (4 Panels) |
+| `5` | Switch to Infinite Scroll View |
+| `[` / `]` | Cycle Panel Count (1 through 4) |
 | `Right` / `>` | Next image(s) |
 | `Left` / `<` | Previous image(s) |
 | `L` | Next image (single step in side-by-side) |
 | `J` | Previous image (single step in side-by-side) |
-| `S` | Start Fullscreen Slideshow |
-| `Alt+Shift+S` | Toggle Internal Slideshow (Zen Mode) |
+| `S` | Toggle Zen Mode (Internal Slideshow) |
+| `F` | Toggle Fullscreen (When Zen Mode Active) |
 | `Ctrl + E` | Show EXIF Metadata |
 | `Alt+S` / `Ctrl+S` | Toggle Sort Mode (Name/Date) |
 | `Alt + P` | Open Preferences |
@@ -90,7 +94,7 @@ The Recent Sessions dialog (`Ctrl + R` or the clock icon) allows users to:
 | `Up` | Increase Slideshow Timer (When Active) |
 | `Down` | Decrease Slideshow Timer (When Active) |
 
-### Slideshow Window Shortcuts
+### Zen Mode (Fullscreen) Shortcuts
 | Key | Action |
 | --- | --- |
 | `Space` / `T` | Pause / Resume Slideshow |

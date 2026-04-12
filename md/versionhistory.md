@@ -1,3 +1,32 @@
+## v0.7.3 (2026-04-12)
+- **Modern Settings UI/UX Overhaul**:
+    - **Tabbed Sidebar Interface**: Replaced the basic horizontal settings row with a sleek sidebar and category-based content organization.
+    - **Custom Toggle Switches**: Implemented animated, premium-styled `ToggleSwitch` widgets replacing standard native checkboxes.
+    - **Frictionless Auto-Save**: Removed the "Apply" button; all preferences now update in real-time and persist instantly.
+- **Enhanced Split-View Capabilities**:
+    - **4-Panel Support**: Expanded Side-by-Side mode to support up to 4 concurrent panels for high-density comparisons.
+    - **Split-View Scaling**: Updated Slideshow and gallery previews to accommodate the new 4-image layout.
+- **Refined Navigation & Hotkeys**:
+    - **Predictable Mode Mapping**: Hotkeys `1` through `4` now map directly to the number of panels on screen.
+    - **Infinite Scroll Shortcut**: Remapped Infinite Scroll to `5` for a cleaner logical sequence.
+    - **Global Panel Cycling**: Added `[` and `]` shortcuts to seamlessly cycle between 1 (Standard) and 4 panels.
+- **Dynamic Preferences**:
+    - **Thumbnail Size Control**: Users can now set the preview thumbnail size (40px–300px) for recent sessions.
+    - **History Depth**: Added a user-defined limit for persistent session history entries.
+    - **Auto-fit Toggle**: New option to control whether each image auto-fits to the window during navigation.
+- **Zen Mode & Fullscreen Refinement**:
+    - **Streamlined Workflow**: Zen Mode is now the primary entry point for immersive viewing, eliminating redundant dialogs and icons.
+    - **Integrated Fullscreen**: Fullscreen is now a sub-state of Zen Mode. A new **⛶ button** in the Zen overlay allows for instant transitions.
+    - **Smarter Hotkeys**: 
+        - Pressing **'S'** now toggles Zen Mode directly.
+        - Pressing **'F'** while in Zen Mode toggles Fullscreen.
+    - **Seamless Timer Management**: The slideshow timer automatically pauses when entering Fullscreen and resumes upon return.
+    - **UI Cleanup**: Removed the slideshow lightning icon (⚡) from the main footer and scrubbed "Start Slideshow" from all menus.
+- **Stability and UX Polish**:
+    - **Full Zoom Persistence**: Verified and fixed zoom level maintenance across navigation, split-view changes, and slideshows.
+    - **State Synchronization**: Fixed visual glitches in toggle initialization and resizing.
+    - **Improved Contextual Feedback**: Updated tooltips and footer buttons to reflect the new hotkey systems.
+
 ## v0.7.2 (2026-04-12)
 
 - **Architectural Overhaul**: Transitioned from a monolithic `main.py` to a modular package structure under `src/`.
